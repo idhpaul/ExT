@@ -1,13 +1,22 @@
 ﻿using Discord;
 using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 public class LoggingService
 {
-    public LoggingService(DiscordSocketClient client, CommandService command)
+    private readonly DiscordSocketClient _client;
+    private readonly InteractionService _handler;
+
+    public LoggingService(DiscordSocketClient client, InteractionService handler)
     {
-        client.Log += LogAsync;
-        command.Log += LogAsync;
+        Console.WriteLine("LoggingService constructor called");
+
+        _client = client;
+        _handler = handler;
+
+        _client.Log += LogAsync;
+        _handler.Log += LogAsync;
     }
     private Task LogAsync(LogMessage message)
     {

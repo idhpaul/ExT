@@ -43,6 +43,8 @@ namespace ExT.Core.Handlers
 
         private async Task ReadyAsync()
         {
+            //await CommandUtils.DeleteAllGlobalCommands(_client);
+
             // Register the commands globally.
             // alternatively you can use _handler.RegisterCommandsGloballyAsync() to register commands to a specific guild.
             await _handler.RegisterCommandsGloballyAsync();
@@ -85,7 +87,7 @@ namespace ExT.Core.Handlers
                 switch (result.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
-                        // implement
+                        context.Interaction.RespondAsync($"{result.ErrorReason}",ephemeral:true);
                         break;
                     default:
                         break;

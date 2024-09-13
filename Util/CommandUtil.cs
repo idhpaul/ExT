@@ -55,7 +55,7 @@ public static class CommandUtils
         }
     }
 
-    public static async Task DeleteGlobalCommands(DiscordSocketClient client)
+    public static async Task DeleteAllGlobalCommands(DiscordSocketClient client)
     {
         var commands = await client.GetGlobalApplicationCommandsAsync();
 

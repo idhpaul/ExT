@@ -1,12 +1,17 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
+using ExT.Core.config;
 using ExT.Core.Handlers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static ExT.Core.Modules.ModalModule;
+using ExT.Core.Attribute;
+using static ExT.Core.Modules.RegistExerciseModalModule;
+using ExT.Core.Enums;
+using EnumsNET;
 
 namespace ExT.Core.Modules
 {
@@ -25,18 +30,28 @@ namespace ExT.Core.Modules
             _handler = handler;
         }
 
-        [SlashCommand("운동등록", "[리더 전용] 운동 채널을 생성합니다.")]
+        [SlashCommand("도전등록", "[리더 전용] 운동 채널을 생성합니다.")]
+        [RequireCommandRole(Role.Leader)]
         public async Task RegistExercise()
         {
             await Context.Interaction.RespondWithModalAsync<RegistExerciseModal>("md_id_regExercise");
         }
     }
 
-    public class ModalModule : InteractionModuleBase<SocketInteractionContext>
+    public class RegistExerciseModalModule : InteractionModuleBase<SocketInteractionContext>
     {
+        private readonly BotConfig _config;
+
+        public RegistExerciseModalModule(BotConfig config)
+        {
+            Console.WriteLine("RegistExerciseModalModule constructor called");
+
+            _config = config;
+        }
+
         public class RegistExerciseModal : IModal
         {
-            public string Title => "📌 운동 등록";
+            public string Title => "📌 도전 등록";
 
             // Strings with the ModalTextInput attribute will automatically become components.
             [InputLabel("채널 제목 (\"띄어쓰기의 경우 - 기호로 대체됩니다\"")]
@@ -60,11 +75,25 @@ namespace ExT.Core.Modules
 
             // 채널 생성
             var guild = Context.Guild;
-
-            var newChannel = await guild.CreateTextChannelAsync(modal.ChannelName, properties =>
+            var developerRole = guild.Roles.FirstOrDefault(r => r.Name == Role.Developer.AsString(EnumFormat.Description));
+            if (developerRole == null)
             {
-                properties.CategoryId = 1282607968650793010; // 카테고리 ID
+                await Context.Channel.SendMessageAsync("개발자 역할을 찾을 수 없습니다. 설정을 확인해주세요.");
+                return; // 메서드 실행 중단
+            }
+
+            var developerRoleId = developerRole.Id;
+
+            var privateChannel = await guild.CreateTextChannelAsync(modal.ChannelName, properties =>
+            {
+                properties.CategoryId = _config.privateCategoryID; // 카테고리 ID
                 properties.Topic = $"{modal.ChannelName} 채널입니다.";
+                properties.PermissionOverwrites = new[]
+                {
+                    new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny)), // 모든 사용자에게 비공개
+                    new Overwrite(Context.Client.CurrentUser.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow)), // 봇 권한
+                    new Overwrite(developerRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Allow)) // 개발자 역할 권한
+                };
             });
 
             // 임베드 
@@ -78,7 +107,7 @@ namespace ExT.Core.Modules
 
             // 버튼 생성
             var buttons = new ComponentBuilder()
-                            .WithButton("Join", "bt_join", ButtonStyle.Primary)
+                            .WithButton("Join", $"bt_join_{privateChannel.Id}", ButtonStyle.Primary)
                             .WithButton("Detail", "bt_detail", ButtonStyle.Secondary)
                             .Build();
 

@@ -3,6 +3,9 @@
 
 * https://discord.com/oauth2/authorize?client_id=1282564767982026834&permissions=1707535116008528&integration_type=0&scope=bot
 
+# [Invite Discord Link]
+* https://discord.gg/JUTnvPHUbU
+
 # [Ref]
 ## Discord DotNet
 ### Document
@@ -13,6 +16,6 @@
 # [Tip]
 ### Reload Discord
 > Cache Reload
-* Use "__Application__" => `Ctrl + R`
-* Use "__Browser__" => `F5`
+> * "__Windows Application__" => `Ctrl + R`
+> * "__Browser__" => `F5`
 

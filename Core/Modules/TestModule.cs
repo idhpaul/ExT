@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static ExT.Core.Modules.ModalModule;
 
 namespace ExT.Core.Modules
 {

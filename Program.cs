@@ -14,15 +14,13 @@ using ExT.Core;
 using Discord.Interactions;
 using System.Globalization;
 using ExT.Core.Handlers;
+using ExT.Core.config;
+using ExT.Core.Modules;
 
 
 public class Program
 {
     private static IServiceProvider _services = default!;
-
-    private readonly ulong guildId = 1222901173200228583;
-    private readonly string adminRoleId = "YOUR_ADMIN_ROLE_ID"; // 관리자의 롤 ID로 교체하세요.
-
 
     public static async Task Main(string[] args)
     {
@@ -39,6 +37,7 @@ public class Program
 
         await _services.GetRequiredService<InteractionHandler>().InitializeAsync();
         _services.GetRequiredService<MessageHandler>().Initialize();
+        _services.GetRequiredService<ButtonExecuteHandler>().Initialize();
 
         // Login and connect.
         await _client.LoginAsync(TokenType.Bot, config["BOT_TOKEN"]);
@@ -51,6 +50,7 @@ public class Program
     private static IServiceProvider ConfigureServices()
     {
         var serviceCollection = new ServiceCollection()
+            .AddSingleton<BotConfig>()
             .AddSingleton(provider => {
                 var config = new DiscordSocketConfig
                 {
@@ -65,6 +65,8 @@ public class Program
             .AddSingleton(provider => new InteractionService(provider.GetRequiredService<DiscordSocketClient>().Rest, _interactionServiceConfig))
             .AddSingleton<InteractionHandler>()
             .AddSingleton<MessageHandler>()
+            .AddSingleton<ButtonExecuteHandler>()
+            .AddSingleton<RegistExerciseModalModule>()
             .AddSingleton<LoggingService>();
 
         return serviceCollection.BuildServiceProvider();

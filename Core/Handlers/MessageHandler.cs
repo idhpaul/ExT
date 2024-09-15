@@ -9,18 +9,23 @@ using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ExT.Core.config;
+using OpenAI.Chat;
+using Microsoft.Extensions.Configuration;
+using System.ClientModel;
 
 namespace ExT.Core.Handlers
 {
     public class MessageHandler
     {
+        private readonly IConfigurationRoot _secretConfig;
         private readonly BotConfig _config;
         private readonly DiscordSocketClient _client;
 
-        public MessageHandler(BotConfig config, DiscordSocketClient client)
+        public MessageHandler(IConfigurationRoot secretConfig, BotConfig config, DiscordSocketClient client)
         {
             Console.WriteLine("MessageHandler constructor called");
 
+            _secretConfig = secretConfig;
             _config = config;
             _client = client;
         }
@@ -40,7 +45,7 @@ namespace ExT.Core.Handlers
             // 채널이 지정된 카테고리에 속하는지 확인
             var channel = message.Channel as SocketTextChannel;
             if (channel == null || channel.CategoryId != _config.privateCategoryID) return;
-            
+
             switch (message.Type)
             {
                 case MessageType.Default:
@@ -56,7 +61,8 @@ namespace ExT.Core.Handlers
                                 await HandleImageUpload(attachment, message);
                             }
                         }
-                    } else
+                    }
+                    else
                     {
                         Console.WriteLine($"{message.Author.Username}: {message.Content}");
                         await HandleTextMessage(message);
@@ -101,13 +107,32 @@ namespace ExT.Core.Handlers
                     await imageStream.CopyToAsync(memoryStream);
                     memoryStream.Position = 0; // 스트림의 위치를 처음으로 되돌림
 
+                    // OpenAI Request
+                    ChatClient client = new(model: "gpt-4o-mini",credential:new ApiKeyCredential(_secretConfig["OPENAI_API_KEY"]));
+
+                    List<ChatMessage> messages = [
+                        new SystemChatMessage (
+                                ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해. .")
+                            ),
+                        new UserChatMessage(
+                                ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터 추출해줘"),
+                                ChatMessageContentPart.CreateImageMessageContentPart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
+                            )
+                    ];
+
+                    // OpenAI Response
+                    ChatCompletion completion = client.CompleteChat(messages);
+
+                    // has Exercise data?
+
                     // 이미지 업로드 사용자 정보
                     var user = message.Author;
 
                     // 봇 메시지 작성
                     var embed = new EmbedBuilder()
                         .WithTitle("새로운 이미지 업로드")
-                        .WithDescription($"{message.Author.Mention}님이 이미지를 업로드했습니다!")
+                        .WithDescription($"{message.Author.Mention}님이 이미지를 업로드했습니다!\n" +
+                                                            $"요약 : {completion}")
                         .WithColor(Color.Blue)
                         .Build();
 
@@ -121,6 +146,6 @@ namespace ExT.Core.Handlers
             }
         }
 
-        
+
     }
 }

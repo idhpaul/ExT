@@ -29,18 +29,14 @@ public class Program
 
         var _client = _services.GetRequiredService<DiscordSocketClient>();
         var _loggingService = _services.GetRequiredService<LoggingService>();
-
-        // Secrets in non-web applications (secrets.json)
-        IConfigurationRoot config = new ConfigurationBuilder()
-            .AddUserSecrets<Program>()
-            .Build();
+        var _secretConfig = _services.GetRequiredService<IConfigurationRoot>();
 
         await _services.GetRequiredService<InteractionHandler>().InitializeAsync();
         _services.GetRequiredService<MessageHandler>().Initialize();
         _services.GetRequiredService<ButtonExecuteHandler>().Initialize();
 
         // Login and connect.
-        await _client.LoginAsync(TokenType.Bot, config["BOT_TOKEN"]);
+        await _client.LoginAsync(TokenType.Bot, _secretConfig["BOT_TOKEN"]);
         await _client.StartAsync();
 
         // Wait infinitely so your bot actually stays connected.
@@ -50,6 +46,11 @@ public class Program
     private static IServiceProvider ConfigureServices()
     {
         var serviceCollection = new ServiceCollection()
+            .AddSingleton<IConfigurationRoot>(provider => {
+                return new ConfigurationBuilder()
+                .AddUserSecrets<Program>()
+                .Build();
+            })
             .AddSingleton<BotConfig>()
             .AddSingleton(provider => {
                 var config = new DiscordSocketConfig

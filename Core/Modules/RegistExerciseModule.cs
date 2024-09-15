@@ -54,9 +54,9 @@ namespace ExT.Core.Modules
             public string Title => "📌 도전 등록";
 
             // Strings with the ModalTextInput attribute will automatically become components.
-            [InputLabel("채널 제목 (\"띄어쓰기의 경우 - 기호로 대체됩니다\"")]
+            [InputLabel("채널 이름 앞 `도전` 이 붙습니다. (띄어쓰기 - 기호 대체)")]
             [RequiredInput(true)]
-            [ModalTextInput("md_lb_regExercise_channelname", placeholder: "채널명을 입력해주세요", maxLength: 30)]
+            [ModalTextInput("md_lb_regExercise_channelname", placeholder: "채널명을 입력해주세요", maxLength: 45)]
             public string ChannelName { get; set; }
 
             // Additional paremeters can be specified to further customize the input.    
@@ -84,7 +84,7 @@ namespace ExT.Core.Modules
 
             var developerRoleId = developerRole.Id;
 
-            var privateChannel = await guild.CreateTextChannelAsync(modal.ChannelName, properties =>
+            var privateChannel = await guild.CreateTextChannelAsync($"도전 {modal.ChannelName}", properties =>
             {
                 properties.CategoryId = _config.privateCategoryID; // 카테고리 ID
                 properties.Topic = $"{modal.ChannelName} 채널입니다.";
@@ -98,7 +98,7 @@ namespace ExT.Core.Modules
 
             // 임베드 
             var embed = new EmbedBuilder()
-                            .WithTitle("임베드 제목")
+                            .WithTitle(modal.ChannelName)
                             .WithDescription("임베드 설명")
                             .WithColor(Color.Blue) // 색상 설정
                             .WithFooter("하단 메시지") // 하단 메시지 설정

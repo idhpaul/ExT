@@ -12,6 +12,7 @@ using ExT.Core.config;
 using OpenAI.Chat;
 using Microsoft.Extensions.Configuration;
 using System.ClientModel;
+using Discord.Rest;
 
 namespace ExT.Core.Handlers
 {
@@ -44,7 +45,9 @@ namespace ExT.Core.Handlers
 
             // 채널이 지정된 카테고리에 속하는지 확인
             var channel = message.Channel as SocketTextChannel;
+
             if (channel == null || channel.CategoryId != _config.privateCategoryID) return;
+            if (channel.GetChannelType() == ChannelType.PublicThread) return;
 
             switch (message.Type)
             {
@@ -58,14 +61,14 @@ namespace ExT.Core.Handlers
                             if (attachment.Width.HasValue && attachment.Height.HasValue)
                             {
                                 // 이미지 파일로 판단
-                                await HandleImageUpload(attachment, message);
+                                await HandleImageUpload(attachment, message, channel);
                             }
                         }
                     }
                     else
                     {
                         Console.WriteLine($"{message.Author.Username}: {message.Content}");
-                        await HandleTextMessage(message);
+                        //await HandleTextMessage(message);
                     }
                     break;
                 default:
@@ -93,57 +96,65 @@ namespace ExT.Core.Handlers
             await botMessage.DeleteAsync();
         }
 
-        private async Task HandleImageUpload(IAttachment attachment, IUserMessage message)
+        private async Task HandleImageUpload(IAttachment attachment, IUserMessage message, SocketTextChannel channel)
         {
-
-            using (var httpClient = new HttpClient())
-            {
+            Console.WriteLine("호출");
+            using var httpClient = new HttpClient();
                 // 이미지 다운로드
-                var imageStream = await httpClient.GetStreamAsync(attachment.Url);
+            var imageStream = await httpClient.GetStreamAsync(attachment.Url);
 
-                // 파일을 메모리 스트림으로 읽기
-                using (var memoryStream = new MemoryStream())
-                {
-                    await imageStream.CopyToAsync(memoryStream);
-                    memoryStream.Position = 0; // 스트림의 위치를 처음으로 되돌림
+            // 파일을 메모리 스트림으로 읽기
+            using var memoryStream = new MemoryStream();
 
-                    // OpenAI Request
-                    ChatClient client = new(model: "gpt-4o-mini",credential:new ApiKeyCredential(_secretConfig["OPENAI_API_KEY"]));
+            await imageStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0; // 스트림의 위치를 처음으로 되돌림
 
-                    List<ChatMessage> messages = [
-                        new SystemChatMessage (
-                                ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해. .")
-                            ),
-                        new UserChatMessage(
-                                ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터 추출해줘"),
-                                ChatMessageContentPart.CreateImageMessageContentPart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
-                            )
-                    ];
+            // OpenAI Request
+            ChatClient client = new(model: "gpt-4o-mini",credential:new ApiKeyCredential(_secretConfig["OPENAI_API_KEY"]));
 
-                    // OpenAI Response
-                    ChatCompletion completion = client.CompleteChat(messages);
+            List<ChatMessage> messages = [
+                new SystemChatMessage (
+                        ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해. .")
+                    ),
+                new UserChatMessage(
+                        ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터만 추출해줘. 다른 표현 및 문장은 아예 하지마."),
+                        ChatMessageContentPart.CreateImageMessageContentPart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
+                    )
+            ];
 
-                    // has Exercise data?
+            // OpenAI Response
+            ChatCompletion completion = await client.CompleteChatAsync(messages);
 
-                    // 이미지 업로드 사용자 정보
-                    var user = message.Author;
+            // 이미지 업로드 사용자 정보
+            var user = message.Author;
 
-                    // 봇 메시지 작성
-                    var embed = new EmbedBuilder()
-                        .WithTitle("새로운 이미지 업로드")
-                        .WithDescription($"{message.Author.Mention}님이 이미지를 업로드했습니다!\n" +
-                                                            $"요약 : {completion}")
-                        .WithColor(Color.Blue)
-                        .Build();
+            // 해당 채널의 활성화된 쓰레드 가져오기
+            var activeThreads = await channel.GetActiveThreadsAsync();
+            var existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
 
-                    // 이미지 파일을 Discord에 재업로드
-                    await message.Channel.SendFileAsync(memoryStream, "image.png");
-                    await message.Channel.SendMessageAsync(embed: embed);
-                }
-
-                // 원본 메시지 삭제
-                await message.DeleteAsync();
+            if (existingThread == null)
+            {
+                // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
+                await channel.CreateThreadAsync(message.Author.GlobalName);
             }
+
+            await existingThread.SendFileAsync(memoryStream, "image.png");
+            await existingThread.SendMessageAsync($"{message.Author.Mention}님이 업로드하신 운동 기록입니다.");
+
+            // 봇 메시지 작성
+            var embed = new EmbedBuilder()
+                .WithTitle("새로운 운동 업로드")
+                .WithDescription($"`{message.Author.GlobalName}`님이 운동 기록을 업로드했습니다!\n" +
+                                                    $"업로드 사진 보러가기 : <#{existingThread.Id}>\n" +
+                                                    $"[요약]\n{completion}")
+                .WithColor(Color.Blue)
+                .Build();
+
+            await message.Channel.SendMessageAsync("@everyone", embed: embed, allowedMentions: AllowedMentions.All);
+
+            // 원본 메시지 삭제
+            await message.DeleteAsync();
+            
         }
 
 

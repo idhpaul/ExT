@@ -45,12 +45,28 @@ namespace ExT.Core.Handlers
 
                     // 채널에 해당 사용자의 권한 부여
                     await channel.AddPermissionOverwriteAsync(user, permissions);
-                    await component.RespondAsync($"{user.Username}님이 비공개 채널에 접근할 수 있도록 설정되었습니다.", ephemeral: true);
+
+                    var embed = new EmbedBuilder()
+                                .WithTitle("채널 이동하기")
+                                .WithDescription($"👉 {channel.Mention}\n" +
+                                $"> * 채널 이동 후 운동 기록 사진을 업로드하세요.\n")
+                                .WithColor(Color.Blue)
+                                .Build();
+
+                    await component.RespondAsync($"{user.Username}님이 비공개 채널에 접근할 수 있도록 설정되었습니다.", embed:embed, ephemeral: true);
                 }
                 else
                 {
                     await component.RespondAsync($"{user.Username}님이 비공개 채널{channel.Name}에 접근할 수 있도록 설정되었습니다.", ephemeral: true);
                 }
+
+            } 
+            else if (component.Data.CustomId.Equals("bt_imageUpload_confirm"))
+            {
+
+            }
+            else if (component.Data.CustomId.Equals("bt_imageUpload_cancel"))
+            {
 
             }
 

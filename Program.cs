@@ -16,11 +16,15 @@ using System.Globalization;
 using ExT.Core.Handlers;
 using ExT.Core.config;
 using ExT.Core.Modules;
+using ExT.Core.Enums;
+using System.Reflection.Metadata.Ecma335;
+
 
 
 public class Program
 {
     private static IServiceProvider _services = default!;
+    private static ProgramMode _mode = ProgramMode.Live;
 
     public static async Task Main(string[] args)
     {
@@ -36,7 +40,8 @@ public class Program
         _services.GetRequiredService<ButtonExecuteHandler>().Initialize();
 
         // Login and connect.
-        await _client.LoginAsync(TokenType.Bot, _secretConfig["BOT_TOKEN"]);
+        await _client.LoginAsync(TokenType.Bot,
+            _mode == ProgramMode.Dev ? _secretConfig["BOT_TOKEN_DEV"] : _secretConfig["BOT_TOKEN"]);
         await _client.StartAsync();
 
         // Wait infinitely so your bot actually stays connected.
@@ -51,7 +56,9 @@ public class Program
                 .AddUserSecrets<Program>()
                 .Build();
             })
-            .AddSingleton<BotConfig>()
+            .AddSingleton(provider => {
+                return new BotConfig(_mode);
+            })
             .AddSingleton(provider => {
                 var config = new DiscordSocketConfig
                 {

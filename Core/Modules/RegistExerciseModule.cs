@@ -78,7 +78,7 @@ namespace ExT.Core.Modules
             var developerRole = guild.Roles.FirstOrDefault(r => r.Name == Role.Developer.AsString(EnumFormat.Description));
             if (developerRole == null)
             {
-                await Context.Channel.SendMessageAsync("개발자 역할을 찾을 수 없습니다. 설정을 확인해주세요.");
+                await RespondAsync("`Developer🚀` 역할을 찾을 수 없습니다. 설정을 확인해주세요.", ephemeral:true);
                 return; // 메서드 실행 중단
             }
 
@@ -95,6 +95,13 @@ namespace ExT.Core.Modules
                     new Overwrite(developerRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Allow)) // 개발자 역할 권한
                 };
             });
+
+            await privateChannel.SendMessageAsync($"# 💪 채널 이용 방법\r\n" +
+                $"> 🔸 이 채널은 도전에 참가한 사람들에게만 보여집니다.\r\n" +
+                $"> 🔸 채널에 사진을 업로드하면 `분석` 후 `요약 결과` 를 볼 수 있습니다.\r\n" +
+                $"> 🔸 각자 업로드한 사진은 쓰레드에 보관됩니다.\r\n" +
+                $"> 🔸 도전 참가자들 간 자유로운 대화 가능합니다.\r\n" +
+                $"> 🔸 상호 간 존중 및 예의를 지켜주세요.");
 
             // 임베드 
             var embed = new EmbedBuilder()
@@ -120,9 +127,6 @@ namespace ExT.Core.Modules
             string message = "create :  " +
                 $"{modal.ChannelName}";
 
-            // Specify the AllowedMentions so we don't actually ping everyone.
-            //AllowedMentions mentions = new();
-            //mentions.AllowedTypes = AllowedMentionTypes.Users;
 
             // Respond to the modal.
             await RespondAsync(embed: embed, components: buttons);

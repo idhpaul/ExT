@@ -13,6 +13,7 @@ using OpenAI.Chat;
 using Microsoft.Extensions.Configuration;
 using System.ClientModel;
 using Discord.Rest;
+using System.Threading;
 
 namespace ExT.Core.Handlers
 {
@@ -98,6 +99,14 @@ namespace ExT.Core.Handlers
 
         private async Task HandleImageUpload(IAttachment attachment, IUserMessage message, SocketTextChannel channel)
         {
+
+            //
+            //var buttons = new ComponentBuilder()
+            //                .WithButton("업로드", "bt_imageUpload_confirm", ButtonStyle.Primary)
+            //                .WithButton("취소", "bt_imageUpload_cancel", ButtonStyle.Secondary)
+            //                .Build();
+
+
             Console.WriteLine("호출");
             using var httpClient = new HttpClient();
                 // 이미지 다운로드
@@ -114,7 +123,8 @@ namespace ExT.Core.Handlers
 
             List<ChatMessage> messages = [
                 new SystemChatMessage (
-                        ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해. .")
+                        ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해." +
+                                                                            "또한 이미지에서 운동 날짜 추출이 가능하면 추출하고 아니면 현재 날짜로 출력해.")
                     ),
                 new UserChatMessage(
                         ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터만 추출해줘. 다른 표현 및 문장은 아예 하지마."),
@@ -127,19 +137,32 @@ namespace ExT.Core.Handlers
 
             // 이미지 업로드 사용자 정보
             var user = message.Author;
+            RestThreadChannel? existingThread = default;
 
             // 해당 채널의 활성화된 쓰레드 가져오기
-            var activeThreads = await channel.GetActiveThreadsAsync();
-            var existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
-
-            if (existingThread == null)
+            do
             {
-                // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
-                await channel.CreateThreadAsync(message.Author.GlobalName);
-            }
+                var activeThreads = await channel.GetActiveThreadsAsync();
+                existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
 
-            await existingThread.SendFileAsync(memoryStream, "image.png");
+                if (existingThread == null)
+                {
+                    // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
+                    await channel.CreateThreadAsync(message.Author.GlobalName);
+                }
+            }
+            while (existingThread == null);
+
+            var fileMessage = await existingThread!.SendFileAsync(memoryStream, "image.png");
             await existingThread.SendMessageAsync($"{message.Author.Mention}님이 업로드하신 운동 기록입니다.");
+
+            // 업로드된 파일 URL 가져오기
+            var attachmentUrl = fileMessage.Attachments.FirstOrDefault()?.Url;
+            if (attachmentUrl == null)
+            {
+                Console.WriteLine("첨부 파일 URL을 가져올 수 없습니다.");
+                return;
+            }
 
             // 봇 메시지 작성
             var embed = new EmbedBuilder()
@@ -147,6 +170,7 @@ namespace ExT.Core.Handlers
                 .WithDescription($"`{message.Author.GlobalName}`님이 운동 기록을 업로드했습니다!\n" +
                                                     $"업로드 사진 보러가기 : <#{existingThread.Id}>\n" +
                                                     $"[요약]\n{completion}")
+                .WithImageUrl(attachmentUrl)
                 .WithColor(Color.Blue)
                 .Build();
 

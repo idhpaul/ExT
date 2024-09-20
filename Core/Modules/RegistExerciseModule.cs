@@ -115,7 +115,7 @@ namespace ExT.Core.Modules
             // 버튼 생성
             var buttons = new ComponentBuilder()
                             .WithButton("Join", $"bt_join_{privateChannel.Id}", ButtonStyle.Primary)
-                            .WithButton("Detail", "bt_detail", ButtonStyle.Secondary)
+                            //.WithButton("Detail", "bt_detail", ButtonStyle.Secondary)
                             .Build();
 
             // Check if "Why??" field is populated
@@ -132,5 +132,6 @@ namespace ExT.Core.Modules
             await RespondAsync(embed: embed, components: buttons);
             await RespondAsync(message, ephemeral: true);
         }
+
     }
 }

@@ -3,7 +3,10 @@ using Discord.WebSocket;
 using EnumsNET;
 using ExT.Core.config;
 using ExT.Core.Enums;
+using Microsoft.Extensions.Configuration;
+using OpenAI.Chat;
 using System;
+using System.ClientModel;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,13 +17,15 @@ namespace ExT.Core.Handlers
     public class ButtonExecuteHandler
     {
         private readonly BotConfig _config;
+        private readonly IConfigurationRoot _secretConfig;
         private readonly DiscordSocketClient _client;
 
-        public ButtonExecuteHandler(BotConfig config, DiscordSocketClient client)
+        public ButtonExecuteHandler(BotConfig config, IConfigurationRoot secretConfig, DiscordSocketClient client)
         {
             Console.WriteLine("ButtonExecuteHandler constructor called");
 
             _config = config;
+            _secretConfig = secretConfig;
             _client = client;
         }
 
@@ -61,14 +66,14 @@ namespace ExT.Core.Handlers
                 }
 
             } 
-            else if (component.Data.CustomId.Equals("bt_imageUpload_confirm"))
-            {
+            //else if (component.Data.CustomId.Equals("bt_imageUpload_confirm"))
+            //{
 
-            }
-            else if (component.Data.CustomId.Equals("bt_imageUpload_cancel"))
-            {
+            //}
+            //else if (component.Data.CustomId.Equals("bt_imageUpload_cancel"))
+            //{
 
-            }
+            //}
 
             //// We can now check for our custom id
             //switch (component.Data.CustomId)

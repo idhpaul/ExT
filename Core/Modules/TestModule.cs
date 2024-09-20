@@ -1,4 +1,5 @@
-﻿using Discord.Interactions;
+﻿using Discord;
+using Discord.Interactions;
 using ExT.Core.Handlers;
 using System;
 using System.Collections.Generic;
@@ -26,5 +27,12 @@ namespace ExT.Core.Modules
         [SlashCommand("ping", "Pings the bot and returns its latency.")]
         public async Task GreetUserAsync()
             => await RespondAsync(text: $":ping_pong: It took me {Context.Client.Latency}ms to respond to you!", ephemeral: true);
+
+        [ComponentInteraction("foo")]
+        public async Task ButtonPress()
+        {
+            await RespondAsync($"Test ComponentInteraction");
+        }
+
     }
 }

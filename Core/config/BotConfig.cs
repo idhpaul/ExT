@@ -10,7 +10,7 @@ namespace ExT.Core.config
     public class BotConfig
     {
         public readonly string botName = "ExT";
-        public readonly string botVersion = "0.0.1";
+        public readonly string botVersion = "0.0.4";
 
         // `ExT` Server
         public ulong guildID { get; private set; }

@@ -17,14 +17,11 @@ using ExT.Core.Handlers;
 using ExT.Core.config;
 using ExT.Core.Modules;
 using ExT.Core.Enums;
-using System.Reflection.Metadata.Ecma335;
-
-
 
 public class Program
 {
     private static IServiceProvider _services = default!;
-    private static ProgramMode _mode = ProgramMode.Dev;
+    private static ProgramMode _mode = ProgramMode.Live;
 
     public static async Task Main(string[] args)
     {

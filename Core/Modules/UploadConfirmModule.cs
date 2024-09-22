@@ -34,91 +34,131 @@ namespace ExT.Core.Modules
         {
             // 채널을 가져옵니다.
             var channel = _client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
+            if (channel == null)
+            {
+                return;
+            }
 
             // 메시지를 가져옵니다.
             var message = await channel.GetMessageAsync(Convert.ToUInt64(messageId)) as IMessage;
+            if (message == null)
+            {
+                await RespondAsync("원본 메시지를 찾을 수 없습니다.", ephemeral: true);
+                return;
+            }
 
             var userId = Context.User.Id;
             if (message.Author.Id != userId)
             {
-                // 즉각적인 응답을 보내기
                 await RespondAsync("메시지 올린 본인만 업로드 요청이 가능합니다.", ephemeral: true);
             }
 
+            // 이미지 파일 확인
+            var imageAttachments = message.Attachments
+                                    .Where(a => a.ContentType.StartsWith("image/") && a.ContentType != "image/gif")
+                                    .ToList();
+
             // 즉각적인 응답을 보내기
-            await RespondAsync();
+            await RespondAsync("분석 중입니다.",ephemeral:true);
 
-            using var httpClient = new HttpClient();
-            // 이미지 다운로드
-            var imageStream = await httpClient.GetStreamAsync(message.Attachments.First().Url);
+            foreach (var image in imageAttachments)
+            {
+                using var httpClient = new HttpClient();
+                // 이미지 다운로드
+                var imageStream = await httpClient.GetStreamAsync(image.Url);
 
-            // 파일을 메모리 스트림으로 읽기
-            using var memoryStream = new MemoryStream();
+                // 파일을 메모리 스트림으로 읽기
+                using var memoryStream = new MemoryStream();
 
-            await imageStream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0; // 스트림의 위치를 처음으로 되돌림
+                await imageStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0; // 스트림의 위치를 처음으로 되돌림
 
-            // OpenAI Request
-            ChatClient client = new(model: "gpt-4o-mini", credential: new ApiKeyCredential(_secretConfig["OPENAI_API_KEY"]));
+                // OpenAI Request
+                ChatClient client = new(model: "gpt-4o-mini", credential: new ApiKeyCredential(_secretConfig["OPENAI_API_KEY"]));
 
-            List<ChatMessage> gptMessages = [
-                new SystemChatMessage (
+                List<ChatMessage> gptMessages = [
+                    new SystemChatMessage (
                         ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해." +
                                                                             "또한 이미지에서 운동 날짜 추출이 가능하면 추출하고 아니면 현재 날짜로 출력해.")
                     ),
-                new UserChatMessage(
-                        ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터만 추출해줘. 다른 표현 및 문장은 아예 하지마."),
-                        ChatMessageContentPart.CreateImageMessageContentPart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
+                    new UserChatMessage(
+                            ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터만 추출해줘. 다른 표현 및 문장은 아예 하지마."),
+                            ChatMessageContentPart.CreateImageMessageContentPart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
                     )
-            ];
+                ];
 
-            // OpenAI Response
-            ChatCompletion completion = await client.CompleteChatAsync(gptMessages);
+                // OpenAI Response
+                ChatCompletion completion = await client.CompleteChatAsync(gptMessages);
 
-            // 이미지 업로드 사용자 정보
-            var user = message.Author;
-            RestThreadChannel? existingThread = default;
+                // 이미지 업로드 사용자 정보
+                var user = message.Author;
+                RestThreadChannel? existingThread = default;
 
-            // 해당 채널의 활성화된 쓰레드 가져오기
-            do
-            {
-                var activeThreads = await channel.GetActiveThreadsAsync();
-                existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
-
-                if (existingThread == null)
+                // 해당 채널의 활성화된 쓰레드 가져오기
+                do
                 {
-                    // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
-                    await channel.CreateThreadAsync(message.Author.GlobalName);
+                var activeThreads = await channel.GetActiveThreadsAsync();
+                    existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
+
+                    if (existingThread == null)
+                    {
+                        // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
+                        await channel.CreateThreadAsync(message.Author.GlobalName);
+                    }
                 }
+                while (existingThread == null);
+
+                var fileMessage = await existingThread!.SendFileAsync(memoryStream, "image.png");
+                await existingThread.SendMessageAsync($"{message.Author.Mention}님이 업로드하신 운동 기록입니다.");
+
+                // 업로드된 파일 URL 가져오기
+                var attachmentUrl = fileMessage.Attachments.FirstOrDefault()?.Url;
+                if (attachmentUrl == null)
+                {
+                    Console.WriteLine("첨부 파일 URL을 가져올 수 없습니다.");
+                    return;
+                }
+
+                // 봇 메시지 작성
+                var embedData = new EmbedBuilder()
+                    .WithTitle("💪 새로운 운동 기록")
+                    .AddField(name: "🔥 Data", value:$"{completion}")
+                    .WithFooter($"- from {message.Author.GlobalName}")
+                    .WithColor(Color.Gold)
+                    .Build();
+
+                var embedImage = new EmbedBuilder()
+                    .WithTitle("🖼️ Image")
+                    .WithDescription($"업로드 사진 보러가기 : <#{existingThread.Id}>")
+                    .WithImageUrl(attachmentUrl)
+                    .WithColor(Color.Orange)
+                    .Build();
+
+                await message.Channel.SendMessageAsync("@everyone", embeds: [embedData, embedImage], allowedMentions: AllowedMentions.All);
+
             }
-            while (existingThread == null);
 
-            var fileMessage = await existingThread!.SendFileAsync(memoryStream, "image.png");
-            await existingThread.SendMessageAsync($"{message.Author.Mention}님이 업로드하신 운동 기록입니다.");
-
-            // 업로드된 파일 URL 가져오기
-            var attachmentUrl = fileMessage.Attachments.FirstOrDefault()?.Url;
-            if (attachmentUrl == null)
-            {
-                Console.WriteLine("첨부 파일 URL을 가져올 수 없습니다.");
-                return;
-            }
-
-            // 봇 메시지 작성
-            var embed = new EmbedBuilder()
-                .WithTitle("새로운 운동 업로드")
-                .WithDescription($"`{message.Author.GlobalName}`님이 운동 기록을 업로드했습니다!\n" +
-                                                    $"업로드 사진 보러가기 : <#{existingThread.Id}>\n" +
-                                                    $"[요약]\n{completion}")
-                .WithImageUrl(attachmentUrl)
-                .WithColor(Color.Blue)
-                .Build();
-
-            await message.Channel.SendMessageAsync("@everyone", embed: embed, allowedMentions: AllowedMentions.All);
-
+            await FollowupAsync("분석 완료되었습니다.", ephemeral: true);
             // 원본 메시지 삭제
             await message.DeleteAsync();
             
+        }
+
+        [ComponentInteraction("bt_imageUpload_cancel:*,*")]
+        public async Task ButtonImageUploadCancel(string channelId, string messageId)
+        {
+            // 채널을 가져옵니다.
+            var channel = _client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
+            if (channel == null)
+            {
+                return;
+            }
+
+            // 메시지를 가져옵니다.
+            var message = await channel.GetMessageAsync(Convert.ToUInt64(messageId)) as IMessage;
+
+            if(message != null)
+                await message.DeleteAsync();
         }
     }
 }

@@ -54,17 +54,10 @@ namespace ExT.Core.Handlers
             {
                 case MessageType.Default:
                 case MessageType.Reply:
-                    // 일반 메시지 및 답글 메시지 처리
-                    if (message.Attachments.Any())
+                    // 첨부파일 확인
+                    if (message.Attachments.Any(a => a.ContentType.StartsWith("image/")))
                     {
-                        foreach (var attachment in message.Attachments)
-                        {
-                            if (attachment.Width.HasValue && attachment.Height.HasValue)
-                            {
-                                // 이미지 파일로 판단
-                                await HandleImageUpload(attachment, message, channel);
-                            }
-                        }
+                        await HandleImageUpload(message, channel);
                     }
                     else
                     {
@@ -97,19 +90,32 @@ namespace ExT.Core.Handlers
             await botMessage.DeleteAsync();
         }
 
-        private async Task HandleImageUpload(IAttachment attachment, IUserMessage message, SocketTextChannel channel)
+        private async Task HandleImageUpload(IUserMessage message, SocketTextChannel channel)
         {
+
+            var confirmMessage = await message.ReplyAsync($"## {message.Author.GlobalName}님, 위 이미지를 `운동 기록` 할까요? \n" +
+                                    $"> * 분석 요청은 사진을 업로드한 사람만 가능합니다.\n" +
+                                    $"> * 이미지 파일만 인식하여 분석합니다.(gif 제외)\n" +
+                                    $"> * 이 메시지는 1분 후 자동 삭제됩니다.");
+
             var buttons = new ComponentBuilder()
                             .WithButton("분석 시작", $"bt_imageUpload_confirm:{channel.Id},{message.Id}", ButtonStyle.Primary)
-                            .WithButton("취소", "bt_imageUpload_cancel", ButtonStyle.Secondary)
+                            .WithButton("취소", $"bt_imageUpload_cancel:{channel.Id},{confirmMessage.Id}", ButtonStyle.Secondary)
                             .Build();
 
-            var uploadConfirmMessage = await message.ReplyAsync($"`{message.Author.GlobalName}님.`\n" +
-                                    $"## 위 이미지를 `운동 데이터 분석` 할까요? \n" +
-                                    $"> * 분석 요청은 사진을 업로드한 사람만 가능합니다.\n" +
-                                    $"> * 이 메시지는 1분 후 자동 삭제됩니다.", components: buttons);
+
+            await confirmMessage.ModifyAsync(message => message.Components = buttons);
+
+            // 주의 : 해당 메시지가 다른 함수에 의해서 삭제되었을 경우 무의미한 Task 대기하는 상황 발생
+            _ = Task.Run(async () => await MethodWithParameter(confirmMessage));
         }
 
+        private async Task MethodWithParameter(IUserMessage confirmMessage)
+        {
+            await Task.Delay(delay:TimeSpan.FromMinutes(1));
 
+            if(confirmMessage != null)
+                await confirmMessage.DeleteAsync();
+        }
     }
 }

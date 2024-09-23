@@ -53,14 +53,6 @@ namespace ExT.Core.Modules
                 await RespondAsync("메시지 올린 본인만 업로드 요청이 가능합니다.", ephemeral: true);
             }
 
-            // 이미지 파일 확인
-            var imageAttachments = message.Attachments
-                                    .Where(a => a.ContentType.StartsWith("image/") && a.ContentType != "image/gif")
-                                    .ToList();
-
-            // 즉각적인 응답을 보내기
-            await RespondAsync("분석 중입니다.",ephemeral:true);
-
             var interaction = Context.Interaction as SocketMessageComponent;
             if (interaction is not null)
             {
@@ -68,13 +60,23 @@ namespace ExT.Core.Modules
                 await interaction.Message.DeleteAsync();
             }
 
+            // 이미지 파일 확인
+            var imageAttachments = message.Attachments
+                                    .Where(a => a.ContentType.StartsWith("image/") && a.ContentType != "image/gif" && a.ContentType != "image/webp")
+                                    .ToList();
+            if(imageAttachments.Count is 0)
+            {
+                await RespondAsync("지원하지 않는 형식입니다.", ephemeral: true);
+                return;
+            }
+
+            await RespondAsync("분석 중입니다.",ephemeral:true);
+
             foreach (var image in imageAttachments)
             {
                 using var httpClient = new HttpClient();
-                // 이미지 다운로드
                 var imageStream = await httpClient.GetStreamAsync(image.Url);
 
-                // 파일을 메모리 스트림으로 읽기
                 using var memoryStream = new MemoryStream();
 
                 await imageStream.CopyToAsync(memoryStream);
@@ -149,9 +151,6 @@ namespace ExT.Core.Modules
             }
 
             await FollowupAsync("분석 완료되었습니다.", ephemeral: true);
-
-            //
-
 
             // 분석 중 확인 메시지(ephemeral) 삭제
             await DeleteOriginalResponseAsync();

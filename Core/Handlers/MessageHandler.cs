@@ -95,7 +95,7 @@ namespace ExT.Core.Handlers
 
             var confirmMessage = await message.ReplyAsync($"## {message.Author.GlobalName}님, 위 이미지를 `운동 기록` 할까요? \n" +
                                     $"> * 분석 요청은 사진을 업로드한 사람만 가능합니다.\n" +
-                                    $"> * 이미지 파일만 인식하여 분석합니다.(gif 제외)\n" +
+                                    $"> * 이미지 파일만 인식하여 분석합니다.(gif,webp 제외)\n" +
                                     $"> * 이 메시지는 1분 후 자동 삭제됩니다.");
 
             var buttons = new ComponentBuilder()

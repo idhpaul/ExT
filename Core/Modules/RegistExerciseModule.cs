@@ -76,7 +76,7 @@ namespace ExT.Core.Modules
             // 채널 생성
             var guild = Context.Guild;
             var developerRole = guild.Roles.FirstOrDefault(r => r.Name == Role.Developer.AsString(EnumFormat.Description));
-            if (developerRole == null)
+            if (developerRole is null)
             {
                 await RespondAsync("`Developer🚀` 역할을 찾을 수 없습니다. 설정을 확인해주세요.", ephemeral:true);
                 return; // 메서드 실행 중단

@@ -43,7 +43,7 @@ namespace ExT.Core.Handlers
 
                 var user = component.User as IGuildUser;
                 var channel = _client.GetChannel(channelId) as SocketTextChannel;
-                if (user != null && channel != null)
+                if (user is not null && channel is not null)
                 {
                     // 사용자에게 채널 접근 권한 추가
                     var permissions = new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow);

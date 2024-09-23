@@ -47,7 +47,7 @@ namespace ExT.Core.Handlers
             // 채널이 지정된 카테고리에 속하는지 확인
             var channel = message.Channel as SocketTextChannel;
 
-            if (channel == null || channel.CategoryId != _config.privateCategoryID) return;
+            if (channel is null || channel.CategoryId != _config.privateCategoryID) return;
             if (channel.GetChannelType() == ChannelType.PublicThread) return;
 
             switch (message.Type)
@@ -107,15 +107,7 @@ namespace ExT.Core.Handlers
             await confirmMessage.ModifyAsync(message => message.Components = buttons);
 
             // 주의 : 해당 메시지가 다른 함수에 의해서 삭제되었을 경우 무의미한 Task 대기하는 상황 발생
-            _ = Task.Run(async () => await MethodWithParameter(confirmMessage));
-        }
-
-        private async Task MethodWithParameter(IUserMessage confirmMessage)
-        {
-            await Task.Delay(delay:TimeSpan.FromMinutes(1));
-
-            if(confirmMessage != null)
-                await confirmMessage.DeleteAsync();
+            _ = Task.Run(async () => await MessageUtil.DelayDeleteMessage(TimeSpan.FromMinutes(1.0), confirmMessage));
         }
     }
 }

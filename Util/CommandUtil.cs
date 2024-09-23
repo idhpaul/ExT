@@ -37,7 +37,7 @@ public static class CommandUtils
 
         foreach (var command in commands)
         {
-            if (command.Name == commandName)
+            if (command.Name.Equals(commandName))
             {
                 await command.DeleteAsync();
                 Console.WriteLine($"Deleted specific guild command: {command.Name}");

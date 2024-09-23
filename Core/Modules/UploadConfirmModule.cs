@@ -34,14 +34,14 @@ namespace ExT.Core.Modules
         {
             // 채널을 가져옵니다.
             var channel = _client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
-            if (channel == null)
+            if (channel is null)
             {
                 return;
             }
 
             // 메시지를 가져옵니다.
             var message = await channel.GetMessageAsync(Convert.ToUInt64(messageId)) as IMessage;
-            if (message == null)
+            if (message is null)
             {
                 await RespondAsync("원본 메시지를 찾을 수 없습니다.", ephemeral: true);
                 return;
@@ -60,6 +60,13 @@ namespace ExT.Core.Modules
 
             // 즉각적인 응답을 보내기
             await RespondAsync("분석 중입니다.",ephemeral:true);
+
+            var interaction = Context.Interaction as SocketMessageComponent;
+            if (interaction is not null)
+            {
+                // 상호작용했던 메시지 삭제
+                await interaction.Message.DeleteAsync();
+            }
 
             foreach (var image in imageAttachments)
             {
@@ -89,6 +96,9 @@ namespace ExT.Core.Modules
 
                 // OpenAI Response
                 ChatCompletion completion = await client.CompleteChatAsync(gptMessages);
+                Console.WriteLine($"input token : {completion.Usage.InputTokens}\n" +
+                                    $"output token : {completion.Usage.OutputTokens}\n" +
+                                    $"[Total token] : {completion.Usage.TotalTokens}");
 
                 // 이미지 업로드 사용자 정보
                 var user = message.Author;
@@ -100,20 +110,20 @@ namespace ExT.Core.Modules
                 var activeThreads = await channel.GetActiveThreadsAsync();
                     existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
 
-                    if (existingThread == null)
+                    if (existingThread is null)
                     {
                         // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
                         await channel.CreateThreadAsync(message.Author.GlobalName);
                     }
                 }
-                while (existingThread == null);
+                while (existingThread is null);
 
                 var fileMessage = await existingThread!.SendFileAsync(memoryStream, "image.png");
                 await existingThread.SendMessageAsync($"{message.Author.Mention}님이 업로드하신 운동 기록입니다.");
 
                 // 업로드된 파일 URL 가져오기
                 var attachmentUrl = fileMessage.Attachments.FirstOrDefault()?.Url;
-                if (attachmentUrl == null)
+                if (attachmentUrl is null)
                 {
                     Console.WriteLine("첨부 파일 URL을 가져올 수 없습니다.");
                     return;
@@ -139,7 +149,14 @@ namespace ExT.Core.Modules
             }
 
             await FollowupAsync("분석 완료되었습니다.", ephemeral: true);
-            // 원본 메시지 삭제
+
+            //
+
+
+            // 분석 중 확인 메시지(ephemeral) 삭제
+            await DeleteOriginalResponseAsync();
+
+            // 사용자가 업로드한 사진 메시지 삭제
             await message.DeleteAsync();
             
         }
@@ -147,18 +164,7 @@ namespace ExT.Core.Modules
         [ComponentInteraction("bt_imageUpload_cancel:*,*")]
         public async Task ButtonImageUploadCancel(string channelId, string messageId)
         {
-            // 채널을 가져옵니다.
-            var channel = _client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
-            if (channel == null)
-            {
-                return;
-            }
-
-            // 메시지를 가져옵니다.
-            var message = await channel.GetMessageAsync(Convert.ToUInt64(messageId)) as IMessage;
-
-            if(message != null)
-                await message.DeleteAsync();
+            await MessageUtil.FindDeleteMessage(_client, channelId, messageId);
         }
     }
 }

@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ExT.Core.Modules
@@ -64,13 +65,13 @@ namespace ExT.Core.Modules
             var imageAttachments = message.Attachments
                                     .Where(a => a.ContentType.StartsWith("image/") && a.ContentType != "image/gif" && a.ContentType != "image/webp")
                                     .ToList();
-            if(imageAttachments.Count is 0)
+            if (imageAttachments.Count is 0)
             {
                 await RespondAsync("지원하지 않는 형식입니다.", ephemeral: true);
                 return;
             }
 
-            await RespondAsync("분석 중입니다.",ephemeral:true);
+            await RespondAsync("분석 중입니다.", ephemeral: true);
 
             foreach (var image in imageAttachments)
             {
@@ -83,24 +84,59 @@ namespace ExT.Core.Modules
                 memoryStream.Position = 0; // 스트림의 위치를 처음으로 되돌림
 
                 // OpenAI Request
-                ChatClient client = new(model: "gpt-4o-mini", credential: new ApiKeyCredential(_secretConfig["OPENAI_API_KEY"]));
+                ChatClient client = new(model: "gpt-4o-mini", credential: new ApiKeyCredential(_secretConfig["OPENAI_API_KEY"]!));
 
                 List<ChatMessage> gptMessages = [
                     new SystemChatMessage (
                         ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해." +
-                                                                            "또한 이미지에서 운동 날짜 추출이 가능하면 추출하고 아니면 현재 날짜로 출력해.")
+                                                                            "또한 운동 시간과 칼로리 소비량을 반드시 포함하고, 운동 시간 혹은 칼로리 소비량이 없으면 '데이터 없음'이라고 표시해." +
+                                                                            "또한 운동 시간과 칼로리 소비량과 관련 없는 것들은 따로 한번에 분류하고 없으면 '데이터 없음' 이라고 표시해.")
                     ),
                     new UserChatMessage(
-                            ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터만 추출해줘. 다른 표현 및 문장은 아예 하지마."),
+                            ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터만 추출해."),
                             ChatMessageContentPart.CreateImageMessageContentPart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
                     )
                 ];
 
+                ChatCompletionOptions options = new()
+                {
+                    ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
+                                        name: "exercise_data",
+                                        jsonSchema: BinaryData.FromString("""
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "exercise_time": { 
+                                                            "type": "string",
+                                                            "description": "운동 시간"
+                                                        },
+                                                        "calories_burned": { 
+                                                            "type": "string",
+                                                            "description": "소모 칼로리"
+                                                        },
+                                                        "other_data": {
+                                                            "type": "string",
+                                                            "description": "기타 운동 관련 데이터"
+                                                        }
+                                                    },
+                                                    "required": ["exercise_time", "calories_burned", "other_data"],
+                                                    "additionalProperties": false
+                                                }
+                                            """),
+                                        strictSchemaEnabled: true)
+                };
+
                 // OpenAI Response
-                ChatCompletion completion = await client.CompleteChatAsync(gptMessages);
-                Console.WriteLine($"input token : {completion.Usage.InputTokens}\n" +
-                                    $"output token : {completion.Usage.OutputTokens}\n" +
-                                    $"[Total token] : {completion.Usage.TotalTokens}");
+                ChatCompletion chatCompletion = await client.CompleteChatAsync(gptMessages,options);
+
+                Console.WriteLine($"input token : {chatCompletion.Usage.InputTokens}\n" +
+                                    $"output token : {chatCompletion.Usage.OutputTokens}\n" +
+                                    $"[Total token] : {chatCompletion.Usage.TotalTokens}");
+
+                using JsonDocument structuredJson = JsonDocument.Parse(chatCompletion.ToString());
+
+                Console.WriteLine($"Exercise Time: {structuredJson.RootElement.GetProperty("exercise_time").GetString()}");
+                Console.WriteLine($"Calories Burned: {structuredJson.RootElement.GetProperty("calories_burned").GetString()}");
 
                 // 이미지 업로드 사용자 정보
                 var user = message.Author;
@@ -109,7 +145,7 @@ namespace ExT.Core.Modules
                 // 해당 채널의 활성화된 쓰레드 가져오기
                 do
                 {
-                var activeThreads = await channel.GetActiveThreadsAsync();
+                    var activeThreads = await channel.GetActiveThreadsAsync();
                     existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
 
                     if (existingThread is null)
@@ -134,7 +170,7 @@ namespace ExT.Core.Modules
                 // 봇 메시지 작성
                 var embedData = new EmbedBuilder()
                     .WithTitle("💪 새로운 운동 기록")
-                    .AddField(name: "🔥 Data", value:$"{completion}")
+                    .AddField(name: "🔥 Data", value: $"{chatCompletion}")
                     .WithFooter($"- from {message.Author.GlobalName}")
                     .WithColor(Color.Gold)
                     .Build();
@@ -150,14 +186,14 @@ namespace ExT.Core.Modules
 
             }
 
-            await FollowupAsync("분석 완료되었습니다.", ephemeral: true);
-
             // 분석 중 확인 메시지(ephemeral) 삭제
             await DeleteOriginalResponseAsync();
 
+            await FollowupAsync("`분석 완료`되었습니다.", ephemeral: true);
+
             // 사용자가 업로드한 사진 메시지 삭제
             await message.DeleteAsync();
-            
+
         }
 
         [ComponentInteraction("bt_imageUpload_cancel:*,*")]

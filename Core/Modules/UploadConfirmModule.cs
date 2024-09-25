@@ -3,16 +3,15 @@ using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
 using ExT.Config;
+using ExT.Data;
 using Microsoft.Extensions.Configuration;
 using OpenAI.Chat;
-using System;
+using Dapper;
+using System.Data.SQLite;
 using System.ClientModel;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
+using ExT.Data.Entities;
+
 
 namespace ExT.Core.Modules
 {
@@ -21,14 +20,16 @@ namespace ExT.Core.Modules
         private readonly BotConfig _config;
         private readonly IConfigurationRoot _secretConfig;
         private readonly DiscordSocketClient _client;
+        private SqliteConnector _sqlite;
 
-        public UploadConfirmModule(BotConfig config, IConfigurationRoot secretConfig, DiscordSocketClient client)
+        public UploadConfirmModule(BotConfig config, IConfigurationRoot secretConfig, DiscordSocketClient client, SqliteConnector sqlite)
         {
             Console.WriteLine("UploadConfirmModule constructor called");
 
             _config = config;
             _secretConfig = secretConfig;
             _client = client;
+            _sqlite = sqlite;
         }
         [ComponentInteraction("bt_imageUpload_confirm:*,*")]
         public async Task ButtonImageUploadConfirm(string channelId, string messageId)
@@ -88,20 +89,20 @@ namespace ExT.Core.Modules
 
                 List<ChatMessage> gptMessages = [
                     new SystemChatMessage (
-                        ChatMessageContentPart.CreateTextMessageContentPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해." +
+                        ChatMessageContentPart.CreateTextPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해." +
                                                                             "또한 운동 시간과 칼로리 소비량을 반드시 포함하고, 운동 시간 혹은 칼로리 소비량이 없으면 '데이터 없음'이라고 표시해." +
                                                                             "또한 운동 시간과 칼로리 소비량과 관련 없는 것들은 따로 한번에 분류하고 없으면 '데이터 없음' 이라고 표시해.")
                     ),
                     new UserChatMessage(
-                            ChatMessageContentPart.CreateTextMessageContentPart("운동 데이터만 추출해."),
-                            ChatMessageContentPart.CreateImageMessageContentPart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
+                            ChatMessageContentPart.CreateTextPart("운동 데이터만 추출해."),
+                            ChatMessageContentPart.CreateImagePart(imageBytes: new BinaryData(memoryStream.ToArray()), "image/png")
                     )
                 ];
 
                 ChatCompletionOptions options = new()
                 {
                     ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
-                                        name: "exercise_data",
+                                        jsonSchemaFormatName: "exercise_data",
                                         jsonSchema: BinaryData.FromString("""
                                                 {
                                                     "type": "object",
@@ -122,21 +123,44 @@ namespace ExT.Core.Modules
                                                     "required": ["exercise_time", "calories_burned", "other_data"],
                                                     "additionalProperties": false
                                                 }
-                                            """),
-                                        strictSchemaEnabled: true)
+                                            """)
+                                        )
                 };
 
                 // OpenAI Response
                 ChatCompletion chatCompletion = await client.CompleteChatAsync(gptMessages,options);
 
-                Console.WriteLine($"input token : {chatCompletion.Usage.InputTokens}\n" +
-                                    $"output token : {chatCompletion.Usage.OutputTokens}\n" +
-                                    $"[Total token] : {chatCompletion.Usage.TotalTokens}");
+                Console.WriteLine($"input token : {chatCompletion.Usage.InputTokenCount}\n" +
+                                    $"output token : {chatCompletion.Usage.OutputTokenCount}\n" +
+                                    $"[Total token] : {chatCompletion.Usage.TotalTokenCount}");
 
                 using JsonDocument structuredJson = JsonDocument.Parse(chatCompletion.ToString());
 
                 Console.WriteLine($"Exercise Time: {structuredJson.RootElement.GetProperty("exercise_time").GetString()}");
                 Console.WriteLine($"Calories Burned: {structuredJson.RootElement.GetProperty("calories_burned").GetString()}");
+                Console.WriteLine($"Calories Burned: {structuredJson.RootElement.GetProperty("other_data").GetString()}");
+
+                var exercise = new ExerciseEntity(
+                                        exercise_time: structuredJson.RootElement.GetProperty("exercise_time").GetString(),
+                                        calories_burned: structuredJson.RootElement.GetProperty("calories_burned").GetString(),
+                                        other_data: structuredJson.RootElement.GetProperty("other_data").GetString());
+
+
+                using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+
+                var sql = "INSERT INTO Exercise (exercise_time, calories_burned, other_data) VALUES (@exercise_time, @calories_burned, @other_data)";
+                {
+
+                    var exercise_data = new { 
+                        exercise_time = exercise.ExerciseTime, 
+                        calories_burned = exercise.CaloriesBurned, 
+                        other_data = exercise.OtherData 
+                    };
+
+                    var rowsAffected = sqliteConnection.Execute(sql, exercise_data);
+                    Console.WriteLine($"{rowsAffected} row(s) inserted.");
+                }
+
 
                 // 이미지 업로드 사용자 정보
                 var user = message.Author;
@@ -170,15 +194,17 @@ namespace ExT.Core.Modules
                 // 봇 메시지 작성
                 var embedData = new EmbedBuilder()
                     .WithTitle("💪 새로운 운동 기록")
-                    .AddField(name: "🔥 Data", value: $"{chatCompletion}")
+                    .AddField(name: "⏳ 운동 시간", value: exercise.ExerciseTime)
+                    .AddField(name: "🔥 소모 칼로리", value: exercise.CaloriesBurned)
+                    .AddField(name: "🌈 기타 데이터", value: exercise.OtherData)
+                    .WithThumbnailUrl(attachmentUrl)
                     .WithFooter($"- from {message.Author.GlobalName}")
                     .WithColor(Color.Gold)
                     .Build();
 
                 var embedImage = new EmbedBuilder()
                     .WithTitle("🖼️ Image")
-                    .WithDescription($"업로드 사진 보러가기 : <#{existingThread.Id}>")
-                    .WithImageUrl(attachmentUrl)
+                    .WithDescription($"업로드 사진 보러가기 : 👉 <#{existingThread.Id}>")
                     .WithColor(Color.Orange)
                     .Build();
 

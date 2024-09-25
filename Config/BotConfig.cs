@@ -12,6 +12,9 @@ namespace ExT.Config
         public readonly string botName = "ExT";
         public readonly string botVersion = "0.0.4";
 
+        public readonly string botDbName = "ExT.sqlite";
+        public readonly string botDbLocate = default!;
+
         // `ExT` Server
         public ulong guildID { get; private set; }
         // `운동 함께해요!` Category
@@ -22,6 +25,8 @@ namespace ExT.Config
         {
             guildID = (ulong)(environment == ProgramMode.Dev ? 1222901173200228583 : 1284028457830977617);
             privateCategoryID = (ulong)(environment == ProgramMode.Dev ? 1282607968650793010 : 1284044542479302656);
+
+            botDbLocate = $"Data Source={Path.Combine(Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName, botDbName)}";
         }
     }
 }

@@ -1,22 +1,15 @@
 ﻿
-using System;
-using System.Reflection;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
-using Discord.Net;
-using Newtonsoft.Json;
-using ExT.Core;
 using Discord.Interactions;
-using System.Globalization;
+using ExT.Config;
 using ExT.Core.Handlers;
-using ExT.Core.config;
 using ExT.Core.Modules;
 using ExT.Core.Enums;
+using ExT.Data;
 
 public class Program
 {
@@ -35,6 +28,7 @@ public class Program
         await _services.GetRequiredService<InteractionHandler>().InitializeAsync();
         _services.GetRequiredService<MessageHandler>().Initialize();
         _services.GetRequiredService<ButtonExecuteHandler>().Initialize();
+        _services.GetRequiredService<SqliteConnector>().Initialize();
 
         // Login and connect.
         await _client.LoginAsync(TokenType.Bot,
@@ -72,6 +66,7 @@ public class Program
             .AddSingleton<MessageHandler>()
             .AddSingleton<ButtonExecuteHandler>()
             .AddSingleton<RegistExerciseModal>()
+            .AddSingleton<SqliteConnector>()
             .AddSingleton<LoggingService>();
 
         return serviceCollection.BuildServiceProvider();

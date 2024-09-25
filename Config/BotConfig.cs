@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExT.Core.config
+namespace ExT.Config
 {
     public class BotConfig
     {

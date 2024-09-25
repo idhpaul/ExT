@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using EnumsNET;
-using ExT.Core.config;
+using ExT.Config;
 using ExT.Core.Enums;
 using Microsoft.Extensions.Configuration;
 using OpenAI.Chat;

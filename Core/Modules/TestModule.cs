@@ -11,9 +11,6 @@ namespace ExT.Core.Modules
 {
     public class TestModule : InteractionModuleBase<SocketInteractionContext>
     {
-        // Dependencies can be accessed through Property injection, public properties with public setters will be set by the service provider
-        public InteractionService Commands { get; set; }
-
         private InteractionHandler _handler;
 
         // Constructor injection is also a valid way to access the dependencies

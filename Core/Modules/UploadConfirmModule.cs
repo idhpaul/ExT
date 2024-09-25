@@ -2,7 +2,7 @@
 using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
-using ExT.Core.config;
+using ExT.Config;
 using Microsoft.Extensions.Configuration;
 using OpenAI.Chat;
 using System;

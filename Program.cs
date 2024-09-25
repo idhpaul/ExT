@@ -71,7 +71,7 @@ public class Program
             .AddSingleton<InteractionHandler>()
             .AddSingleton<MessageHandler>()
             .AddSingleton<ButtonExecuteHandler>()
-            .AddSingleton<RegistExerciseModalModule>()
+            .AddSingleton<RegistExerciseModal>()
             .AddSingleton<LoggingService>();
 
         return serviceCollection.BuildServiceProvider();

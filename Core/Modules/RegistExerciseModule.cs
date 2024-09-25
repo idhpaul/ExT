@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using ExT.Core.config;
 using ExT.Core.Handlers;
 using System;
 using System.Collections.Generic;
@@ -9,20 +8,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using ExT.Core.Attribute;
-using static ExT.Core.Modules.RegistExerciseModalModule;
+using static ExT.Core.Modules.RegistExerciseModal;
 using ExT.Core.Enums;
 using EnumsNET;
+using ExT.Config;
 
 namespace ExT.Core.Modules
 {
     public class RegistExerciseModule : InteractionModuleBase<SocketInteractionContext>
     {
-        // Dependencies can be accessed through Property injection, public properties with public setters will be set by the service provider
-        public InteractionService Commands { get; set; }
-
         private InteractionHandler _handler;
 
-        // Constructor injection is also a valid way to access the dependencies
         public RegistExerciseModule(InteractionHandler handler)
         {
             Console.WriteLine("RegistExerciseModule constructor called");
@@ -34,22 +30,22 @@ namespace ExT.Core.Modules
         [RequireCommandRole(Role.Leader)]
         public async Task RegistExercise()
         {
-            await Context.Interaction.RespondWithModalAsync<RegistExerciseModal>("md_id_regExercise");
+            await Context.Interaction.RespondWithModalAsync<RegistExerciseModalContext>("md_id_regExercise");
         }
     }
 
-    public class RegistExerciseModalModule : InteractionModuleBase<SocketInteractionContext>
+    public class RegistExerciseModal : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly BotConfig _config;
 
-        public RegistExerciseModalModule(BotConfig config)
+        public RegistExerciseModal(BotConfig config)
         {
             Console.WriteLine("RegistExerciseModalModule constructor called");
 
             _config = config;
         }
 
-        public class RegistExerciseModal : IModal
+        public class RegistExerciseModalContext : IModal
         {
             public string Title => "📌 도전 등록";
 
@@ -57,7 +53,7 @@ namespace ExT.Core.Modules
             [InputLabel("채널 이름 앞 `도전` 이 붙습니다. (띄어쓰기 - 기호 대체)")]
             [RequiredInput(true)]
             [ModalTextInput("md_lb_regExercise_channelname", placeholder: "채널명을 입력해주세요", maxLength: 45)]
-            public string ChannelName { get; set; }
+            public required string ChannelName { get; set; }
 
             // Additional paremeters can be specified to further customize the input.    
             // Parameters can be optional
@@ -69,7 +65,7 @@ namespace ExT.Core.Modules
 
         // Responds to the modal.
         [ModalInteraction("md_id_regExercise")]
-        public async Task ModalResponse(RegistExerciseModal modal)
+        public async Task ModalResponse(RegistExerciseModalContext modal)
         {
             // 채널 중복 확인
 

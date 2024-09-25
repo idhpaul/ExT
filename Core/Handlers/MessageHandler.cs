@@ -8,12 +8,12 @@ using System.Net.Mail;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using ExT.Core.config;
 using OpenAI.Chat;
 using Microsoft.Extensions.Configuration;
 using System.ClientModel;
 using Discord.Rest;
 using System.Threading;
+using ExT.Config;
 
 namespace ExT.Core.Handlers
 {

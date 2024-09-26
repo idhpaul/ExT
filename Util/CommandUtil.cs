@@ -1,6 +1,7 @@
 ﻿using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,6 +33,8 @@ public static class CommandUtils
 
     public static async Task DeleteSpecificGuildCommand(DiscordSocketClient client, ulong guildId, string commandName)
     {
+        Debug.Assert(commandName is not null, "commandName parameter is null");
+
         var guild = client.GetGuild(guildId);
         var commands = await guild.GetApplicationCommandsAsync();
 

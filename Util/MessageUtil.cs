@@ -2,6 +2,7 @@
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,6 +35,9 @@ public static class MessageUtil
 
     public static async Task FindDeleteMessage(DiscordSocketClient client, string channelId, string messageId)
     {
+        Debug.Assert(channelId is not null, "channelId parameter is null");
+        Debug.Assert(messageId is not null, "messageId parameter is null");
+
         SocketTextChannel? channel = client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
         if (channel is null)
         {

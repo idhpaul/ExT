@@ -8,6 +8,6 @@ namespace ExT.Data.Entities
 {
     public interface IUserEntity
     {
-        public string Name { get; set; }
+        public string Name { get;}
     }
 }

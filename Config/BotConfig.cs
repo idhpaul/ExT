@@ -16,9 +16,9 @@ namespace ExT.Config
         public readonly string botDbLocate = default!;
 
         // `ExT` Server
-        public ulong guildID { get; private set; }
+        public readonly ulong guildID = default!;
         // `운동 함께해요!` Category
-        public ulong privateCategoryID { get; private set; }
+        public readonly ulong privateCategoryID = default!;
 
 
         public BotConfig(ProgramMode environment)

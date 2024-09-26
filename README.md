@@ -17,6 +17,14 @@
 * [https://docs.discordnet.dev/guides/introduction/intro.html](https://docs.discordnet.dev/guides/introduction/intro.html)
 ### Sample
 * [https://docs.discordnet.dev/guides/introduction/intro.html](https://docs.discordnet.dev/guides/introduction/intro.html)
+## OpenAI .Net
+### Document
+* [https://github.com/openai/openai-dotnet/tree/main/examples](https://github.com/openai/openai-dotnet/tree/main/examples)
+### Sample
+* [https://github.com/openai/openai-dotnet/tree/main/examples](https://github.com/openai/openai-dotnet/tree/main/examples)
+## Dapper
+### Document
+* [https://www.learndapper.com/](https://www.learndapper.com/)
 
 # [Tip]
 ### Reload Discord

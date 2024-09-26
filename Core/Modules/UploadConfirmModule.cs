@@ -11,6 +11,7 @@ using System.Data.SQLite;
 using System.ClientModel;
 using System.Text.Json;
 using ExT.Data.Entities;
+using System.Diagnostics;
 
 
 namespace ExT.Core.Modules
@@ -34,6 +35,9 @@ namespace ExT.Core.Modules
         [ComponentInteraction("bt_imageUpload_confirm:*,*")]
         public async Task ButtonImageUploadConfirm(string channelId, string messageId)
         {
+            Debug.Assert(channelId is not null, "channelId parameter is null");
+            Debug.Assert(messageId is not null, "messageId parameter is null");
+
             // 채널을 가져옵니다.
             var channel = _client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
             if (channel is null)
@@ -89,9 +93,9 @@ namespace ExT.Core.Modules
 
                 List<ChatMessage> gptMessages = [
                     new SystemChatMessage (
-                        ChatMessageContentPart.CreateTextPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고 아니면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해." +
+                        ChatMessageContentPart.CreateTextPart("이미지에서 운동 데이터나 지표를 추출이 가능하면 추출하고, 그렇지 않는다면면  \"지원하지 않는 이미지 형식입니다.\" 라고 출력해." +
                                                                             "또한 운동 시간과 칼로리 소비량을 반드시 포함하고, 운동 시간 혹은 칼로리 소비량이 없으면 '데이터 없음'이라고 표시해." +
-                                                                            "또한 운동 시간과 칼로리 소비량과 관련 없는 것들은 따로 한번에 분류하고 없으면 '데이터 없음' 이라고 표시해.")
+                                                                            "또한 운동 시간과 칼로리 소비량과 이외의 운동 관련 데이터(거리, 평균 속도, 심박수, 케이던스, 걸음 수, 페이스 등)라고 판단되는 것들은 한번에 정리하고 없다면 '데이터 없음' 이라고 표시해.")
                     ),
                     new UserChatMessage(
                             ChatMessageContentPart.CreateTextPart("운동 데이터만 추출해."),

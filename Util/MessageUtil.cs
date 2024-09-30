@@ -17,6 +17,12 @@ public static class MessageUtil
             await targetMessage.DeleteAsync();
     }
 
+    public static async Task<IMessage?> GetMessageFromChannel(ISocketMessageChannel channel, ulong messageId)
+    {
+        var message = await channel.GetMessageAsync(messageId);
+        return (message is null) ? null : message;
+    }
+
     public static async Task FindDeleteMessage(DiscordSocketClient client, ulong channelId, ulong messageId)
     {
         SocketTextChannel? channel = client.GetChannel(channelId) as SocketTextChannel;

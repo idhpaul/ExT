@@ -131,89 +131,112 @@ namespace ExT.Core.Modules
                                         )
                 };
 
-                // OpenAI Response
-                ChatCompletion chatCompletion = await client.CompleteChatAsync(gptMessages,options);
-
-                Console.WriteLine($"input token : {chatCompletion.Usage.InputTokenCount}\n" +
-                                    $"output token : {chatCompletion.Usage.OutputTokenCount}\n" +
-                                    $"[Total token] : {chatCompletion.Usage.TotalTokenCount}");
-
-                using JsonDocument structuredJson = JsonDocument.Parse(chatCompletion.ToString());
-
-                Console.WriteLine($"Exercise Time: {structuredJson.RootElement.GetProperty("exercise_time").GetString()}");
-                Console.WriteLine($"Calories Burned: {structuredJson.RootElement.GetProperty("calories_burned").GetString()}");
-                Console.WriteLine($"Calories Burned: {structuredJson.RootElement.GetProperty("other_data").GetString()}");
-
-                var exercise = new ExerciseEntity(
-                                        exercise_time: structuredJson.RootElement.GetProperty("exercise_time").GetString(),
-                                        calories_burned: structuredJson.RootElement.GetProperty("calories_burned").GetString(),
-                                        other_data: structuredJson.RootElement.GetProperty("other_data").GetString());
-
-
-                using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
-
-                var sql = "INSERT INTO Exercise (exercise_time, calories_burned, other_data) VALUES (@exercise_time, @calories_burned, @other_data)";
+                try
                 {
+                    // OpenAI Response
+                    ChatCompletion chatCompletion = await client.CompleteChatAsync(gptMessages, options);
 
-                    var exercise_data = new { 
-                        exercise_time = exercise.ExerciseTime, 
-                        calories_burned = exercise.CaloriesBurned, 
-                        other_data = exercise.OtherData 
+                    Console.WriteLine($"input token : {chatCompletion.Usage.InputTokenCount}\n" +
+                                        $"output token : {chatCompletion.Usage.OutputTokenCount}\n" +
+                                        $"[Total token] : {chatCompletion.Usage.TotalTokenCount}");
+
+                    using JsonDocument structuredJson = JsonDocument.Parse(chatCompletion.ToString());
+
+                    Debug.Assert(structuredJson is not null);
+                    if (structuredJson is null)
+                    {
+                        Console.WriteLine("output json is null");
+                        return;
+                    }
+
+                    var exercise_time = structuredJson.RootElement.GetProperty("exercise_time").GetString();
+                    var calories_burned = structuredJson.RootElement.GetProperty("calories_burned").GetString();
+                    var other_data = structuredJson.RootElement.GetProperty("other_data").GetString();
+
+                    Console.WriteLine($"Exercise Time: {exercise_time}");
+                    Console.WriteLine($"Calories Burned: {calories_burned}");
+                    Console.WriteLine($"Calories Burned: {other_data}");
+
+                    var exercise = new ExerciseEntity()
+                    {
+                        ExerciseTime = exercise_time,
+                        CaloriesBurned = calories_burned,
+                        OtherData = other_data
                     };
 
-                    var rowsAffected = sqliteConnection.Execute(sql, exercise_data);
-                    Console.WriteLine($"{rowsAffected} row(s) inserted.");
-                }
+                    using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
 
-
-                // 이미지 업로드 사용자 정보
-                var user = message.Author;
-                RestThreadChannel? existingThread = default;
-
-                // 해당 채널의 활성화된 쓰레드 가져오기
-                do
-                {
-                    var activeThreads = await channel.GetActiveThreadsAsync();
-                    existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
-
-                    if (existingThread is null)
+                    var sql = "INSERT INTO Exercise (exercise_time, calories_burned, other_data) VALUES (@exercise_time, @calories_burned, @other_data)";
                     {
-                        // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
-                        await channel.CreateThreadAsync(message.Author.GlobalName);
+
+                        var exercise_data = new
+                        {
+                            exercise_time = exercise.ExerciseTime,
+                            calories_burned = exercise.CaloriesBurned,
+                            other_data = exercise.OtherData
+                        };
+
+                        var rowsAffected = sqliteConnection.Execute(sql, exercise_data);
+                        Console.WriteLine($"{rowsAffected} row(s) inserted.");
                     }
+
+                    // 이미지 업로드 사용자 정보
+                    var user = message.Author;
+                    RestThreadChannel? existingThread = default;
+
+                    // 해당 채널의 활성화된 쓰레드 가져오기
+                    do
+                    {
+                        var activeThreads = await channel.GetActiveThreadsAsync();
+                        existingThread = activeThreads.FirstOrDefault(t => t.Name == message.Author.GlobalName);
+
+                        if (existingThread is null)
+                        {
+                            // 사용자 이름으로 쓰레드 생성(쓰레드 삭제 불가능)
+                            await channel.CreateThreadAsync(message.Author.GlobalName);
+                        }
+                    }
+                    while (existingThread is null);
+
+                    var fileMessage = await existingThread!.SendFileAsync(memoryStream, "image.png");
+                    await existingThread.SendMessageAsync($"{message.Author.GlobalName}님이 업로드하신 운동 기록입니다.");
+
+                    // 업로드된 파일 URL 가져오기
+                    var attachmentUrl = fileMessage.Attachments.FirstOrDefault()?.Url;
+                    if (attachmentUrl is null)
+                    {
+                        Console.WriteLine("첨부 파일 URL을 가져올 수 없습니다.");
+                        return;
+                    }
+
+                    // 봇 메시지 작성
+                    var embedData = new EmbedBuilder()
+                        .WithTitle("💪 새로운 운동 기록")
+                        .AddField(name: "⏳ 운동 시간", value: exercise.ExerciseTime)
+                        .AddField(name: "🔥 소모 칼로리", value: exercise.CaloriesBurned)
+                        .AddField(name: "🌈 기타 데이터", value: exercise.OtherData)
+                        .WithThumbnailUrl(attachmentUrl)
+                        .WithFooter($"- from {message.Author.GlobalName}")
+                        .WithColor(Color.Gold)
+                        .Build();
+
+                    var embedImage = new EmbedBuilder()
+                        .WithTitle("🖼️ Image")
+                        .WithDescription($"업로드 사진 보러가기 : 👉 <#{existingThread.Id}>")
+                        .WithColor(Color.Orange)
+                        .Build();
+
+                    await message.Channel.SendMessageAsync($"✨ {message.Author.GlobalName} 님이 {exercise.ExerciseTime} 동안 운동하였습니다! @everyone", embeds: [embedData, embedImage], allowedMentions: AllowedMentions.All);
+
                 }
-                while (existingThread is null);
-
-                var fileMessage = await existingThread!.SendFileAsync(memoryStream, "image.png");
-                await existingThread.SendMessageAsync($"{message.Author.Mention}님이 업로드하신 운동 기록입니다.");
-
-                // 업로드된 파일 URL 가져오기
-                var attachmentUrl = fileMessage.Attachments.FirstOrDefault()?.Url;
-                if (attachmentUrl is null)
+                catch (JsonException jsonEx)
                 {
-                    Console.WriteLine("첨부 파일 URL을 가져올 수 없습니다.");
-                    return;
+                    Console.WriteLine($"JSON parsing error: {jsonEx.Message}");
                 }
-
-                // 봇 메시지 작성
-                var embedData = new EmbedBuilder()
-                    .WithTitle("💪 새로운 운동 기록")
-                    .AddField(name: "⏳ 운동 시간", value: exercise.ExerciseTime)
-                    .AddField(name: "🔥 소모 칼로리", value: exercise.CaloriesBurned)
-                    .AddField(name: "🌈 기타 데이터", value: exercise.OtherData)
-                    .WithThumbnailUrl(attachmentUrl)
-                    .WithFooter($"- from {message.Author.GlobalName}")
-                    .WithColor(Color.Gold)
-                    .Build();
-
-                var embedImage = new EmbedBuilder()
-                    .WithTitle("🖼️ Image")
-                    .WithDescription($"업로드 사진 보러가기 : 👉 <#{existingThread.Id}>")
-                    .WithColor(Color.Orange)
-                    .Build();
-
-                await message.Channel.SendMessageAsync("@everyone", embeds: [embedData, embedImage], allowedMentions: AllowedMentions.All);
-
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An error occurred: {ex.Message}");
+                }
             }
 
             // 분석 중 확인 메시지(ephemeral) 삭제

@@ -8,51 +8,55 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using ExT.Core.Attribute;
-using static ExT.Core.Modules.RegistExerciseModal;
+using static ExT.Core.Modules.ChallengeCreateModal;
 using ExT.Core.Enums;
 using EnumsNET;
 using ExT.Config;
+using ExT.Data;
+using ExT.Data.Entities;
 
 namespace ExT.Core.Modules
 {
-    public class RegistExerciseModule : InteractionModuleBase<SocketInteractionContext>
+    public class ChallengeCreateModule : InteractionModuleBase<SocketInteractionContext>
     {
         private InteractionHandler _handler;
 
-        public RegistExerciseModule(InteractionHandler handler)
+        public ChallengeCreateModule(InteractionHandler handler)
         {
-            Console.WriteLine("RegistExerciseModule constructor called");
+            Console.WriteLine("ChallengeCreateModule constructor called");
 
             _handler = handler;
         }
 
-        [SlashCommand("도전등록", "[리더 전용] 운동 채널을 생성합니다.")]
+        [SlashCommand("도전등록", "[리더 전용] 도전 임베드 메시지 및 해당 채널을 생성합니다.")]
         [RequireCommandRole(Role.Leader)]
-        public async Task RegistExercise()
+        public async Task RegistChallenge()
         {
-            await Context.Interaction.RespondWithModalAsync<RegistExerciseModalContext>("md_id_regExercise");
+            await Context.Interaction.RespondWithModalAsync<ChallengeCreateModalContext>("md_id_createChallenge");
         }
     }
 
-    public class RegistExerciseModal : InteractionModuleBase<SocketInteractionContext>
+    public class ChallengeCreateModal : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly BotConfig _config;
+        private SqliteConnector _sqlite;
 
-        public RegistExerciseModal(BotConfig config)
+        public ChallengeCreateModal(BotConfig config, SqliteConnector sqlite)
         {
-            Console.WriteLine("RegistExerciseModalModule constructor called");
+            Console.WriteLine("ChallengeCreateModalModule constructor called");
 
             _config = config;
+            _sqlite = sqlite;
         }
 
-        public class RegistExerciseModalContext : IModal
+        public class ChallengeCreateModalContext : IModal
         {
             public string Title => "📌 도전 등록";
 
             // Strings with the ModalTextInput attribute will automatically become components.
             [InputLabel("채널 이름 앞 `도전` 이 붙습니다. (띄어쓰기 - 기호 대체)")]
             [RequiredInput(true)]
-            [ModalTextInput("md_lb_regExercise_channelname", placeholder: "채널명을 입력해주세요", maxLength: 45)]
+            [ModalTextInput("md_lb_regChallenge_channelname", placeholder: "채널명을 입력해주세요", maxLength: 45)]
             public required string ChannelName { get; set; }
 
             // Additional paremeters can be specified to further customize the input.    
@@ -64,8 +68,8 @@ namespace ExT.Core.Modules
         }
 
         // Responds to the modal.
-        [ModalInteraction("md_id_regExercise")]
-        public async Task ModalResponse(RegistExerciseModalContext modal)
+        [ModalInteraction("md_id_createChallenge")]
+        public async Task ModalResponse(ChallengeCreateModalContext modal)
         {
             // 채널 중복 확인
 
@@ -101,10 +105,9 @@ namespace ExT.Core.Modules
 
             // 임베드 
             var embed = new EmbedBuilder()
-                            .WithTitle(modal.ChannelName)
-                            .WithDescription("임베드 설명")
+                            .WithTitle("⚡ "+modal.ChannelName)
                             .WithColor(Color.Blue) // 색상 설정
-                            .WithFooter("하단 메시지") // 하단 메시지 설정
+                            .WithDescription($"리더 : {Context.User.Mention}") // 하단 메시지 설정
                             .WithTimestamp(DateTimeOffset.Now) // 타임스탬프 설정
                             .Build();
 
@@ -123,6 +126,16 @@ namespace ExT.Core.Modules
             string message = "create :  " +
                 $"{modal.ChannelName}";
 
+            // DB에 도전 목록 commit
+            _sqlite.DbInsertChallenge(
+                new ChallengeEntity 
+                {
+                    Title = modal.ChannelName,
+                    ChannelId = privateChannel.Id,
+                    LeaderName = Context.User.GlobalName,
+                    LeaderId = Context.User.Id
+                }
+            );
 
             // Respond to the modal.
             await RespondAsync(embed: embed, components: buttons);

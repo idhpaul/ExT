@@ -38,14 +38,14 @@ namespace ExT.Core.Modules
             Debug.Assert(channelId is not null, "channelId parameter is null");
             Debug.Assert(messageId is not null, "messageId parameter is null");
 
-            // 채널을 가져옵니다.
+            // 채널 조회
             var channel = _client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
             if (channel is null)
             {
                 return;
             }
 
-            // 메시지를 가져옵니다.
+            // 메시지 조회
             var message = await channel.GetMessageAsync(Convert.ToUInt64(messageId)) as IMessage;
             if (message is null)
             {

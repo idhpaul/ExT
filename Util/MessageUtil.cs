@@ -17,9 +17,10 @@ public static class MessageUtil
             await targetMessage.DeleteAsync();
     }
 
-    public static async Task<IMessage?> GetMessageFromChannel(ISocketMessageChannel channel, ulong messageId)
+    public static async Task<IUserMessage?> GetMessageFromChannel(ISocketMessageChannel channel, ulong messageId)
     {
-        var message = await channel.GetMessageAsync(messageId);
+        var message = await channel.GetMessageAsync(messageId) as IUserMessage;
+
         return (message is null) ? null : message;
     }
 

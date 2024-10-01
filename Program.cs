@@ -65,7 +65,8 @@ public class Program
             .AddSingleton<InteractionHandler>()
             .AddSingleton<MessageHandler>()
             .AddSingleton<ButtonExecuteHandler>()
-            .AddSingleton<ChallengeCreateModal>()
+            .AddSingleton<ChallengeCreateModule>()
+            .AddSingleton<ChallengeUpdateModule>()
             .AddSingleton<SqliteConnector>()
             .AddSingleton<LoggingService>();
 

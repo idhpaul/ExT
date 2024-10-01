@@ -8,7 +8,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using ExT.Core.Attribute;
-using static ExT.Core.Modules.ChallengeCreateModal;
 using ExT.Core.Enums;
 using EnumsNET;
 using ExT.Config;
@@ -19,14 +18,18 @@ namespace ExT.Core.Modules
 {
     public class ChallengeCreateModule : InteractionModuleBase<SocketInteractionContext>
     {
+        private readonly BotConfig _config;
         private InteractionHandler _handler;
+        private SqliteConnector _sqlite;
 
-        public ChallengeCreateModule(InteractionHandler handler)
+        public ChallengeCreateModule(BotConfig config, InteractionHandler handler, SqliteConnector sqlite)
         {
             Console.WriteLine("ChallengeCreateModule constructor called");
 
+            _config = config;
             _handler = handler;
-        }
+            _sqlite = sqlite;
+    }
 
         [SlashCommand("도전등록", "[리더 전용] 도전 임베드 메시지 및 해당 채널을 생성합니다.")]
         [RequireCommandRole(Role.Leader)]
@@ -34,40 +37,18 @@ namespace ExT.Core.Modules
         {
             await Context.Interaction.RespondWithModalAsync<ChallengeCreateModalContext>("md_id_createChallenge");
         }
-    }
-
-    public class ChallengeCreateModal : InteractionModuleBase<SocketInteractionContext>
-    {
-        private readonly BotConfig _config;
-        private SqliteConnector _sqlite;
-
-        public ChallengeCreateModal(BotConfig config, SqliteConnector sqlite)
-        {
-            Console.WriteLine("ChallengeCreateModalModule constructor called");
-
-            _config = config;
-            _sqlite = sqlite;
-        }
 
         public class ChallengeCreateModalContext : IModal
         {
             public string Title => "📌 도전 등록";
 
-            // Strings with the ModalTextInput attribute will automatically become components.
             [InputLabel("채널 이름 앞 `도전` 이 붙습니다. (띄어쓰기 - 기호 대체)")]
             [RequiredInput(true)]
             [ModalTextInput("md_lb_regChallenge_channelname", placeholder: "채널명을 입력해주세요", maxLength: 45)]
             public required string ChannelName { get; set; }
 
-            // Additional paremeters can be specified to further customize the input.    
-            // Parameters can be optional
-            //[RequiredInput(false)]
-            //[InputLabel("Why??")]
-            //[ModalTextInput("food_reason", TextInputStyle.Paragraph, "Kuz it's tasty", maxLength: 500)]
-            //public string Reason { get; set; }
         }
 
-        // Responds to the modal.
         [ModalInteraction("md_id_createChallenge")]
         public async Task ModalResponse(ChallengeCreateModalContext modal)
         {
@@ -78,12 +59,13 @@ namespace ExT.Core.Modules
             var developerRole = guild.Roles.FirstOrDefault(r => r.Name == Role.Developer.AsString(EnumFormat.Description));
             if (developerRole is null)
             {
-                await RespondAsync("`Developer🚀` 역할을 찾을 수 없습니다. 설정을 확인해주세요.", ephemeral:true);
-                return; // 메서드 실행 중단
+                await RespondAsync("`Developer🚀` 역할을 찾을 수 없습니다. 설정을 확인해주세요.", ephemeral: true);
+                return;
             }
 
             var developerRoleId = developerRole.Id;
 
+            // 도전 채널 생성
             var privateChannel = await guild.CreateTextChannelAsync($"도전 {modal.ChannelName}", properties =>
             {
                 properties.CategoryId = _config.privateCategoryID; // 카테고리 ID
@@ -96,6 +78,7 @@ namespace ExT.Core.Modules
                 };
             });
 
+            // 도전 채널 안내 메시지
             await privateChannel.SendMessageAsync($"# 💪 채널 이용 방법\r\n" +
                 $"> 🔸 이 채널은 도전에 참가한 사람들에게만 보여집니다.\r\n" +
                 $"> 🔸 채널에 사진을 업로드하면 `분석` 후 `요약 결과` 를 볼 수 있습니다.\r\n" +
@@ -103,32 +86,22 @@ namespace ExT.Core.Modules
                 $"> 🔸 도전 참가자들 간 자유로운 대화 가능합니다.\r\n" +
                 $"> 🔸 상호 간 존중 및 예의를 지켜주세요.");
 
-            // 임베드 
             var embed = new EmbedBuilder()
-                            .WithTitle("⚡ "+modal.ChannelName)
-                            .WithColor(Color.Blue) // 색상 설정
-                            .WithDescription($"리더 : {Context.User.Mention}") // 하단 메시지 설정
-                            .WithTimestamp(DateTimeOffset.Now) // 타임스탬프 설정
+                            .WithTitle(modal.ChannelName)
+                            .WithDescription($"리더 : {Context.User.Mention}")
+                            .WithThumbnailUrl("https://cdn.discordapp.com/attachments/1290685382651809813/1290685388272439296/challengeThumbnail.jpg?ex=66fd5bf0&is=66fc0a70&hm=36d096f93b555631e7184a1b7531e9fa65babb0f7a6559b4ef66f58d56ada8c5&")
+                            .WithColor(Color.Blue)
+                            .WithTimestamp(DateTimeOffset.Now) // 글로벌 환경이 아니기에 현지시간(KST) 함수 사용
                             .Build();
 
-            // 버튼 생성
             var buttons = new ComponentBuilder()
                             .WithButton("Join", $"bt_join_{privateChannel.Id}", ButtonStyle.Primary)
                             //.WithButton("Detail", "bt_detail", ButtonStyle.Secondary)
                             .Build();
 
-            // Check if "Why??" field is populated
-            string channelName = string.IsNullOrWhiteSpace(modal.ChannelName)
-                ? "."
-                : $" because {modal.ChannelName}";
-
-            // Build the message to send.
-            string message = "create :  " +
-                $"{modal.ChannelName}";
-
-            // DB에 도전 목록 commit
+            // DB 도전 목록 commit
             _sqlite.DbInsertChallenge(
-                new ChallengeEntity 
+                new ChallengeEntity
                 {
                     Title = modal.ChannelName,
                     ChannelId = privateChannel.Id,
@@ -137,10 +110,7 @@ namespace ExT.Core.Modules
                 }
             );
 
-            // Respond to the modal.
             await RespondAsync(embed: embed, components: buttons);
-            await RespondAsync(message, ephemeral: true);
         }
-
     }
 }

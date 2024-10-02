@@ -23,11 +23,12 @@ namespace ExT.Data
         public void Initialize()
         {
             Console.WriteLine($"Sqlite db name : {_config.botName}");
-            Console.WriteLine($"Sqlite db locate : {_config.botDbConnectionString}");
+            Console.WriteLine($"Sqlite db path : {_config.botDbPath}");
+            Console.WriteLine($"Sqlite db connection string : {_config.botDbConnectionString}");
 
             using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
             
-            if (!File.Exists(_config.botDbConnectionString))
+            if (!File.Exists(_config.botDbPath))
             {
                 Console.WriteLine("Sqlite db 파일 생성");
                 SQLiteConnection.CreateFile(_config.botDbName);

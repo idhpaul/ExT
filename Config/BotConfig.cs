@@ -10,7 +10,7 @@ namespace ExT.Config
     public class BotConfig
     {
         public readonly string botName = "ExT";
-        public readonly string botVersion = "0.0.8-beta";
+        public readonly string botVersion = "0.0.9-beta";
 
         public readonly string botDbName = default!;
         public readonly string botDbPath = default!;

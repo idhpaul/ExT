@@ -43,7 +43,11 @@ namespace ExT.Core.Handlers
 
                 var user = component.User as IGuildUser;
                 var channel = _client.GetChannel(channelId) as SocketTextChannel;
-                if (user is not null && channel is not null)
+                if (user is null || channel is null)
+                {
+                    await component.RespondAsync("유저 or 채널을 찾을 수 없습니다.", ephemeral: true);
+                }
+                else
                 {
                     // 사용자에게 채널 접근 권한 추가
                     var permissions = new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow);
@@ -58,11 +62,7 @@ namespace ExT.Core.Handlers
                                 .WithColor(Color.Blue)
                                 .Build();
 
-                    await component.RespondAsync($"{user.Username}님이 비공개 채널에 접근할 수 있도록 설정되었습니다.", embed:embed, ephemeral: true);
-                }
-                else
-                {
-                    await component.RespondAsync($"{user.Username}님이 비공개 채널{channel.Name}에 접근할 수 있도록 설정되었습니다.", ephemeral: true);
+                    await component.RespondAsync($"{user.Username}님이 비공개 채널에 접근할 수 있도록 설정되었습니다.", embed: embed, ephemeral: true);
                 }
 
             } 

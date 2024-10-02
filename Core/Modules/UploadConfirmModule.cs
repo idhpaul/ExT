@@ -157,28 +157,18 @@ namespace ExT.Core.Modules
                     Console.WriteLine($"Calories Burned: {calories_burned}");
                     Console.WriteLine($"Calories Burned: {other_data}");
 
-                    var exercise = new ExerciseEntity()
-                    {
-                        ExerciseTime = exercise_time,
-                        CaloriesBurned = calories_burned,
-                        OtherData = other_data
-                    };
 
-                    using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
-
-                    var sql = "INSERT INTO Exercise (exercise_time, calories_burned, other_data) VALUES (@exercise_time, @calories_burned, @other_data)";
-                    {
-
-                        var exercise_data = new
+                    _sqlite.DbInsertExercise(
+                        new ExerciseEntity()
                         {
-                            exercise_time = exercise.ExerciseTime,
-                            calories_burned = exercise.CaloriesBurned,
-                            other_data = exercise.OtherData
-                        };
-
-                        var rowsAffected = sqliteConnection.Execute(sql, exercise_data);
-                        Console.WriteLine($"{rowsAffected} row(s) inserted.");
-                    }
+                            ExerciseTime = exercise_time,
+                            CaloriesBurned = calories_burned,
+                            OtherData = other_data,
+                            UserName = Context.User.GlobalName,
+                            UserId = Context.User.Id,
+                            ChannelId = Context.Channel.Id
+                        }
+                    );
 
                     // 이미지 업로드 사용자 정보
                     var user = message.Author;
@@ -212,9 +202,9 @@ namespace ExT.Core.Modules
                     // 봇 메시지 작성
                     var embedData = new EmbedBuilder()
                         .WithTitle("💪 새로운 운동 기록")
-                        .AddField(name: "⏳ 운동 시간", value: exercise.ExerciseTime)
-                        .AddField(name: "🔥 소모 칼로리", value: exercise.CaloriesBurned)
-                        .AddField(name: "🌈 기타 데이터", value: exercise.OtherData)
+                        .AddField(name: "⏳ 운동 시간", value: exercise_time)
+                        .AddField(name: "🔥 소모 칼로리", value: calories_burned)
+                        .AddField(name: "🌈 기타 데이터", value: other_data)
                         .WithThumbnailUrl(attachmentUrl)
                         .WithFooter($"- from {message.Author.GlobalName}")
                         .WithColor(Color.Gold)
@@ -226,7 +216,7 @@ namespace ExT.Core.Modules
                         .WithColor(Color.Orange)
                         .Build();
 
-                    await message.Channel.SendMessageAsync($"✨ {message.Author.GlobalName} 님이 {exercise.ExerciseTime} 동안 운동하였습니다! @everyone", embeds: [embedData, embedImage], allowedMentions: AllowedMentions.All);
+                    await message.Channel.SendMessageAsync($"✨ {message.Author.GlobalName} 님이 {exercise_time} 동안 운동하였습니다! @everyone", embeds: [embedData, embedImage], allowedMentions: AllowedMentions.All);
 
                 }
                 catch (JsonException jsonEx)
@@ -252,7 +242,16 @@ namespace ExT.Core.Modules
         [ComponentInteraction("bt_imageUpload_cancel:*,*")]
         public async Task ButtonImageUploadCancel(string channelId, string messageId)
         {
-            await MessageUtil.FindDeleteMessage(_client, channelId, messageId);
+            try
+            {
+                await MessageUtil.FindDeleteMessage(_client, channelId, messageId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"bt_imageUpload_cancel:*,*: {ex.Message}");
+                throw;
+            }
+            
         }
     }
 }

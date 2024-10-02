@@ -44,10 +44,11 @@ namespace ExT.Data
             var createChallengeTable = @"
                 CREATE TABLE IF NOT EXISTS  Challenge (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT,
-                    channel_id INTEGER,
-                    leader_name TEXT,
-                    leader_id INTEGER
+                    Title TEXT,
+                    MessageId INTEGER,
+                    ChannelId INTEGER,
+                    LeaderName TEXT,
+                    LeaderId INTEGER
                     );
                 ";
 
@@ -66,23 +67,48 @@ namespace ExT.Data
             var createExerciseTable = @"
                 CREATE TABLE IF NOT EXISTS Exercise (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    exercise_time TEXT,
-                    calories_burned TEXT,
-                    other_data TEXT
+                    ExerciseTime TEXT,
+                    CaloriesBurned TEXT,
+                    OtherData TEXT,
+                    UserName TEXT,
+                    UserId INTEGER,
+                    ChannelId INTEGER
                     );
                 ";
             // Dapper를 이용해 테이블 생성 쿼리 실행
             sqliteConnection.Execute(createExerciseTable);
         }
 
+        public async Task<ChallengeEntity> DbSelectChallenge(ulong messageId)
+        {
+            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+
+            var sql = "SELECT * FROM Challenge WHERE MessageId = @MessageId";
+
+            var challenge = await sqliteConnection.QuerySingleOrDefaultAsync<ChallengeEntity>(sql, new { MessageId = messageId });
+            return challenge;
+
+        }
+
         public void DbInsertChallenge(ChallengeEntity challenge)
         {
             using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
 
-            var sql = "INSERT INTO Challenge (title, channel_id, leader_name, leader_id) VALUES (@Title, @ChannelId, @LeaderName, @LeaderId)";
+            var sql = "INSERT INTO Challenge (Title, MessageId, ChannelId, LeaderName, LeaderId) VALUES (@Title, @MessageId, @ChannelId, @LeaderName, @LeaderId)";
             {
                 var rowsAffected = sqliteConnection.Execute(sql, challenge);
                 Console.WriteLine($"{rowsAffected} row(s) inserted.");
+            }
+        }
+
+        public void DbDeleteChallenge(ChallengeEntity challenge)
+        {
+            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            
+            var sql = "DELETE FROM Challenge WHERE MessageId = @MessageId";
+            {
+                var rowsAffected = sqliteConnection.Execute(sql, challenge);
+                Console.WriteLine($"{rowsAffected} row(s) deleted.");
             }
         }
 
@@ -90,9 +116,20 @@ namespace ExT.Data
         {
             using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
 
-            var sql = "INSERT INTO Challenge (title, channel_id, leader_name, leader_id) VALUES (@Title, @ChannelId, @LeaderName, @LeaderId)";
+            var sql = "UPDATE Challenge (Title, MessageId, ChannelId, LeaderName, LeaderId) VALUES (@Title, @MessageId, @ChannelId, @LeaderName, @LeaderId)";
             {
                 var rowsAffected = sqliteConnection.Execute(sql, challenge);
+                Console.WriteLine($"{rowsAffected} row(s) updated.");
+            }
+        }
+
+        public void DbInsertExercise(ExerciseEntity exercise)
+        {
+            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+
+            var sql = "INSERT INTO Exercise (ExerciseTime, CaloriesBurned, OtherData, UserName, UserId, ChannelId) VALUES (@ExerciseTime, @CaloriesBurned, @OtherData, @UserName, @UserId, @ChannelId)";
+            {
+                var rowsAffected = sqliteConnection.Execute(sql, exercise);
                 Console.WriteLine($"{rowsAffected} row(s) inserted.");
             }
         }

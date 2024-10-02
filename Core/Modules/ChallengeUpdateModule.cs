@@ -68,7 +68,7 @@ namespace ExT.Core.Modules
         {
             public string Title => "📌 도전 수정";
 
-            [InputLabel("채널 이름 앞 `도전` 이 붙습니다. (띄어쓰기 - 기호 대체)")]
+            [InputLabel("채널 이름 앞 `도전` 이 붙습니다. 수정 불가 (띄어쓰기 - 기호 대체)")]
             [RequiredInput(true)]
             [ModalTextInput("md_lb_updateChallenge_channelname", placeholder: "채널명을 입력해주세요", maxLength: 45)]
             public required string ChannelName { get; set; }
@@ -90,6 +90,7 @@ namespace ExT.Core.Modules
                             .WithDescription($"리더 : {Context.User.Mention}")
                             .WithColor(Color.Blue) // 색상 설정
                             .WithThumbnailUrl("https://cdn.discordapp.com/attachments/1290685382651809813/1290685388272439296/challengeThumbnail.jpg?ex=66fd5bf0&is=66fc0a70&hm=36d096f93b555631e7184a1b7531e9fa65babb0f7a6559b4ef66f58d56ada8c5&")
+                            .WithTimestamp(beforeMessage.Embeds.First().Timestamp.Value)
                             .Build();
 
             // 임베드 메시지 수정
@@ -98,7 +99,19 @@ namespace ExT.Core.Modules
                 msg.Embeds = new[] { embed };
             });
 
+            try
+            {
+                // 업데이트 정책 정해지면 코딩
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"at md_id_updateChallenge:(\\d+): {ex.Message}");
+                throw;
+            }
+
             await RespondAsync("메시지가 성공적으로 수정되었습니다.", ephemeral: true);
+
+
         }
 
     }    

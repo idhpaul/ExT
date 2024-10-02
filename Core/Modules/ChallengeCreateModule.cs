@@ -42,7 +42,7 @@ namespace ExT.Core.Modules
         {
             public string Title => "📌 도전 등록";
 
-            [InputLabel("채널 이름 앞 `도전` 이 붙습니다. (띄어쓰기 - 기호 대체)")]
+            [InputLabel("채널 이름 앞 `도전` 이 붙습니다.(수정 불가) (띄어쓰기 - 기호 대체)")]
             [RequiredInput(true)]
             [ModalTextInput("md_lb_regChallenge_channelname", placeholder: "채널명을 입력해주세요", maxLength: 45)]
             public required string ChannelName { get; set; }
@@ -99,18 +99,32 @@ namespace ExT.Core.Modules
                             //.WithButton("Detail", "bt_detail", ButtonStyle.Secondary)
                             .Build();
 
-            // DB 도전 목록 commit
-            _sqlite.DbInsertChallenge(
-                new ChallengeEntity
-                {
-                    Title = modal.ChannelName,
-                    ChannelId = privateChannel.Id,
-                    LeaderName = Context.User.GlobalName,
-                    LeaderId = Context.User.Id
-                }
-            );
+           await RespondAsync(embed: embed, components: buttons);
 
-            await RespondAsync(embed: embed, components: buttons);
+            // 전송된 메시지 가져오기
+            var sentMessage = await GetOriginalResponseAsync();
+            var messageId = sentMessage.Id;
+
+            try
+            {
+                // DB 도전 목록 commit
+                _sqlite.DbInsertChallenge(
+                    new ChallengeEntity
+                    {
+                        Title = modal.ChannelName,
+                        MessageId = messageId,
+                        ChannelId = privateChannel.Id,
+                        LeaderName = Context.User.GlobalName,
+                        LeaderId = Context.User.Id
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"at md_id_createChallenge : {ex.Message}");
+                throw;
+            }
+            
         }
     }
 }

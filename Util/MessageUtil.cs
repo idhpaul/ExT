@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 public static class MessageUtil
@@ -19,25 +20,12 @@ public static class MessageUtil
 
     public static async Task<IUserMessage?> GetMessageFromChannel(ISocketMessageChannel channel, ulong messageId)
     {
+        Debug.Assert(channel is not null, "channelId parameter is null");
+        Debug.Assert(messageId > 0, "messageId parameter is null");
+
         var message = await channel.GetMessageAsync(messageId) as IUserMessage;
 
         return (message is null) ? null : message;
-    }
-
-    public static async Task FindDeleteMessage(DiscordSocketClient client, ulong channelId, ulong messageId)
-    {
-        SocketTextChannel? channel = client.GetChannel(channelId) as SocketTextChannel;
-        if (channel is null)
-        {
-            Console.WriteLine("failed to get channel");
-            return;
-        }
-        else
-        {
-            var message = await channel.GetMessageAsync(messageId);
-            if (message is not null)
-                await message.DeleteAsync();
-        }
     }
 
     public static async Task FindDeleteMessage(DiscordSocketClient client, string channelId, string messageId)
@@ -48,8 +36,7 @@ public static class MessageUtil
         SocketTextChannel? channel = client.GetChannel(Convert.ToUInt64(channelId)) as SocketTextChannel;
         if (channel is null)
         {
-            Console.WriteLine("failed to get channel");
-            return;
+            throw new Exception("channel is null");
         }
         else
         {

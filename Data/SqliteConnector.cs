@@ -23,11 +23,11 @@ namespace ExT.Data
         public void Initialize()
         {
             Console.WriteLine($"Sqlite db name : {_config.botName}");
-            Console.WriteLine($"Sqlite db locate : {_config.botDbLocate}");
+            Console.WriteLine($"Sqlite db locate : {_config.botDbConnectionString}");
 
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
             
-            if (!File.Exists(_config.botDbLocate))
+            if (!File.Exists(_config.botDbConnectionString))
             {
                 Console.WriteLine("Sqlite db 파일 생성");
                 SQLiteConnection.CreateFile(_config.botDbName);
@@ -40,7 +40,7 @@ namespace ExT.Data
 
         private void DbCreateChallengeTable()
         {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
 
             sqliteConnection.Open();
 
@@ -63,7 +63,7 @@ namespace ExT.Data
 
         private void DbCreateExerciseTable()
         {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
 
             sqliteConnection.Open();
 
@@ -85,7 +85,7 @@ namespace ExT.Data
 
         public async Task<ChallengeEntity> DbSelectChallenge(ulong messageId)
         {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
 
             var sql = "SELECT * FROM Challenge WHERE MessageId = @MessageId";
 
@@ -96,7 +96,7 @@ namespace ExT.Data
 
         public void DbInsertChallenge(ChallengeEntity challenge)
         {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
 
             var sql = "INSERT INTO Challenge (Title, MessageId, ChannelId, LeaderName, LeaderId) VALUES (@Title, @MessageId, @ChannelId, @LeaderName, @LeaderId)";
             {
@@ -107,7 +107,7 @@ namespace ExT.Data
 
         public void DbDeleteChallenge(ChallengeEntity challenge)
         {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
             
             var sql = "DELETE FROM Challenge WHERE MessageId = @MessageId";
             {
@@ -118,7 +118,7 @@ namespace ExT.Data
 
         public void DbUpdateChallenge(ChallengeEntity challenge)
         {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
 
             var sql = "UPDATE Challenge (Title, MessageId, ChannelId, LeaderName, LeaderId) VALUES (@Title, @MessageId, @ChannelId, @LeaderName, @LeaderId)";
             {
@@ -129,7 +129,7 @@ namespace ExT.Data
 
         public void DbInsertExercise(ExerciseEntity exercise)
         {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbLocate);
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
 
             var sql = "INSERT INTO Exercise (ExerciseTime, CaloriesBurned, OtherData, UserName, UserId, ChannelId) VALUES (@ExerciseTime, @CaloriesBurned, @OtherData, @UserName, @UserId, @ChannelId)";
             {

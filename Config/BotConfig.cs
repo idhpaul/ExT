@@ -13,7 +13,8 @@ namespace ExT.Config
         public readonly string botVersion = "0.0.8-beta";
 
         public readonly string botDbName = default!;
-        public readonly string botDbLocate = default!;
+        public readonly string botDbPath = default!;
+        public readonly string botDbConnectionString = default!;
 
         // `ExT` Server
         public readonly ulong guildID = default!;
@@ -28,9 +29,10 @@ namespace ExT.Config
 
             botDbName = environment == ProgramMode.Dev
                 ? "ExT_dev.sqlite" : "ExT.sqlite";
-            botDbLocate = environment == ProgramMode.Dev 
-                ? $"Data Source={Path.Combine(Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName, botDbName)}"
-                : $"Data Source={Path.Combine(Environment.CurrentDirectory, botDbName)}";
+            botDbPath = environment == ProgramMode.Dev
+                ? $"{Path.Combine(Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName, botDbName)}"
+                : $"{Path.Combine(Environment.CurrentDirectory, botDbName)}";
+            botDbConnectionString = $"Data Source={botDbPath}";
         }
     }
 }

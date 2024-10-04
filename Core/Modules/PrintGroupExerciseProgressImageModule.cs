@@ -40,10 +40,10 @@ namespace ExT.Core.Modules
 
         [SlashCommand("진행사항", "[리더 전용] ")]
         public async Task ProgressPrint(
-            [Summary("채널ID", "해당 채널 운동시간 진행사항 이미지를 표시합니다.")] string channelId)
+            [Summary("채널ID", "삭제할 도전 임베드 메시지의 ID입니다.")] string channelId)
         {
 
-            await ReplyAsync();
+            await DeferAsync();
 
             // 요약 사진 업데이트
             var foo = _sqlite.DbSelectExercise(Convert.ToUInt64(channelId));
@@ -64,13 +64,13 @@ namespace ExT.Core.Modules
                 using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
                     // RespondWithFileAsync를 사용하여 파일 스트림을 전송
-                    await RespondWithFileAsync(stream, Path.GetFileName(filePath), "현재 진행사항 입니다.");
+                    await Context.Channel.SendFileAsync(stream, Path.GetFileName(filePath), "현재 진행사항 입니다.");
                 }
             }
             else
             {
                 // 파일이 없을 경우 오류 메시지 전송
-                await RespondAsync("error");
+                await ReplyAsync("File not found!");
             }
 
         }

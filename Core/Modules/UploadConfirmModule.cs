@@ -12,6 +12,7 @@ using System.ClientModel;
 using System.Text.Json;
 using ExT.Data.Entities;
 using System.Diagnostics;
+using ExT.Service;
 
 
 namespace ExT.Core.Modules
@@ -237,6 +238,15 @@ namespace ExT.Core.Modules
             // 사용자가 업로드한 사진 메시지 삭제
             await message.DeleteAsync();
 
+            // 요약 사진 업데이트
+            var foo = _sqlite.DbSelectExercise(Convert.ToUInt64(channelId));
+            foreach (var exercise in foo)
+            {
+                Console.WriteLine($"ExerciseTime: {exercise.ExerciseTime}, CaloriesBurned: {exercise.CaloriesBurned}, OtherData: {exercise.OtherData}, UserName: {exercise.UserName}");
+            }
+
+            var image1 = new GroupExerciseProgressImage(foo!);
+            image1.GenerateImage("test.webp");
         }
 
         [ComponentInteraction("bt_imageUpload_cancel:*,*")]

@@ -106,26 +106,14 @@ namespace ExT.Data
             }
         }
 
-        public void DbDeleteChallenge(ChallengeEntity challenge)
-        {
-            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
-            
-            var sql = "DELETE FROM Challenge WHERE MessageId = @MessageId";
-            {
-                var rowsAffected = sqliteConnection.Execute(sql, challenge);
-                Console.WriteLine($"{rowsAffected} row(s) deleted.");
-            }
-        }
-
-        public void DbUpdateChallenge(ChallengeEntity challenge)
+        public List<ExerciseEntity> DbSelectExercise(ulong ChannelId)
         {
             using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
 
-            var sql = "UPDATE Challenge (Title, MessageId, ChannelId, LeaderName, LeaderId) VALUES (@Title, @MessageId, @ChannelId, @LeaderName, @LeaderId)";
-            {
-                var rowsAffected = sqliteConnection.Execute(sql, challenge);
-                Console.WriteLine($"{rowsAffected} row(s) updated.");
-            }
+            var sql = "SELECT * FROM Exercise WHERE ChannelId = @ChannelId";
+            var exercises = sqliteConnection.Query<ExerciseEntity>(sql, new { ChannelId = ChannelId }).ToList();
+
+            return exercises;
         }
 
         public void DbInsertExercise(ExerciseEntity exercise)
@@ -138,5 +126,27 @@ namespace ExT.Data
                 Console.WriteLine($"{rowsAffected} row(s) inserted.");
             }
         }
+        public void DbUpdateChallenge(ChallengeEntity challenge)
+        {
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
+
+            var sql = "UPDATE Challenge (Title, MessageId, ChannelId, LeaderName, LeaderId) VALUES (@Title, @MessageId, @ChannelId, @LeaderName, @LeaderId)";
+            {
+                var rowsAffected = sqliteConnection.Execute(sql, challenge);
+                Console.WriteLine($"{rowsAffected} row(s) updated.");
+            }
+        }
+
+        public void DbDeleteChallenge(ChallengeEntity challenge)
+        {
+            using var sqliteConnection = new SQLiteConnection(_config.botDbConnectionString);
+            
+            var sql = "DELETE FROM Challenge WHERE MessageId = @MessageId";
+            {
+                var rowsAffected = sqliteConnection.Execute(sql, challenge);
+                Console.WriteLine($"{rowsAffected} row(s) deleted.");
+            }
+        }
+
     }
 }

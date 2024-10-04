@@ -14,7 +14,7 @@ using ExT.Data;
 public class Program
 {
     private static IServiceProvider _services = default!;
-    private static ProgramMode _mode = ProgramMode.Live;
+    private static ProgramMode _mode = ProgramMode.Dev;
 
     public static async Task Main(string[] args)
     {

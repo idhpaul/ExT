@@ -34,7 +34,7 @@
   </ItemGroup>
 
   
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+  <!--<Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <ItemGroup>
       <AssetFolder Include="$(ProjectDir)\Asset\**\*.*"/>
     </ItemGroup>
@@ -43,6 +43,6 @@
         DestinationFolder="$(TargetDir)\Asset\%(RecursiveDir)"
         SkipUnchangedFiles="true"
         />
-  </Target>
+  </Target>-->
 
 </Project>

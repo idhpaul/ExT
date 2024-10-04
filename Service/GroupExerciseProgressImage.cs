@@ -34,7 +34,7 @@ namespace ExT.Service
 
         public List<UserExerciseSummary> ExerciseSummary { get; init; }
 
-        public GroupExerciseProgressImage(List<ExerciseEntity> userExercise, int imageWidth = 300, int imageHeightPerBar = 50, string fontName = "Arial", float fontSize = 25, int margin = 10)
+        public GroupExerciseProgressImage(List<ExerciseEntity> userExercise, int imageWidth = 300, int imageHeightPerBar = 50, string fontName = "Asset/Font/MaruBuri-Bold.ttf", float fontSize = 25, int margin = 10)
         {
             this.userExercise = userExercise;
             this.imageWidth = imageWidth;
@@ -102,7 +102,15 @@ namespace ExT.Service
         // 이미지를 생성하고 저장하는 메서드
         public void GenerateImage(string outputPath)
         {
-            var font = SystemFonts.CreateFont(fontName, fontSize);
+
+            // assets 폴더 내의 폰트 파일 경로
+            string fontPath = Path.Combine(Environment.CurrentDirectory, fontName);
+
+            // 폰트 로드
+            FontCollection fontCollection = new FontCollection();
+            FontFamily fontFamily = fontCollection.Add(fontPath);
+            Font font = new Font(fontFamily, fontSize); // 폰트 크기 설정
+
             var orderExerciseTime = ExerciseSummary.OrderByDescending(u => u.TotalExerciseTime);   // 최대 운동 시간
 
             // 폰트 크기 및 텍스트 길이 측정
@@ -125,7 +133,7 @@ namespace ExT.Service
                 for (int i = 0; i < orderExerciseTime.Count(); i++)
                 {
                     var user = orderExerciseTime.ElementAt(i);
-                    float barWidth = (float)user.TotalExerciseTime.ToString().Length / orderExerciseTime.First().TotalExerciseTime.ToString().Length * (finalImageWidth - maxTextWidth - margin * 2); // 비례적으로 바 너비 설정
+                    float barWidth = (float)((float)user.TotalExerciseTime.TotalSeconds / orderExerciseTime.First().TotalExerciseTime.TotalSeconds * (finalImageWidth - maxTextWidth - margin * 2)); // 비례적으로 바 너비 설정
 
                     // 바의 좌상단 위치 계산
                     int yPosition = i * imageHeightPerBar;
